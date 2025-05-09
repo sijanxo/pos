@@ -6,7 +6,6 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
       <nav className="p-4">
         <ul className="flex gap-6">
           <li><Link href="/sales">Sales</Link></li>
-          <li><Link href="/sales/products">Products</Link></li>
           <li><Link href="/sales/customers">Customers</Link></li>
           <li><Link href="/sales/reports">Reports</Link></li>
           <li><Link href="/sales/user">User</Link></li>
