@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Search, Plus, Minus } from 'lucide-react';
 import { usePOSStore } from '@/stores/posStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -22,6 +22,12 @@ export default function Sales() {
   } = usePOSStore();
 
   const [searchInput, setSearchInput] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Initialize search results on mount
+  useEffect(() => {
+    searchProducts('');
+  }, [searchProducts]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -47,6 +53,19 @@ export default function Sales() {
   };
 
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handlePayment = () => {
+    if (cart.items.length > 0) {
+      setShowPaymentModal(true);
+    }
+  };
+
+  const processPayment = (paymentMethod: 'cash' | 'card') => {
+    // Simple payment processing - in real app would handle actual payment
+    alert(`Payment processed via ${paymentMethod}! Total: ${formatCurrency(cart.total)}`);
+    clearCart();
+    setShowPaymentModal(false);
+  };
 
   return (
     <div className="sales-page h-screen bg-background flex flex-col">
@@ -182,6 +201,7 @@ export default function Sales() {
               </div>
               
               <button
+                onClick={handlePayment}
                 disabled={cart.items.length === 0}
                 className="pay-button bg-secondary text-white px-8 py-3 rounded-lg font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary-hover focus:outline-none focus:ring-2 focus:ring-secondary"
               >
@@ -191,6 +211,45 @@ export default function Sales() {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Process Payment</h2>
+            <div className="mb-6">
+              <div className="text-2xl font-bold text-center">
+                {formatCurrency(cart.total)}
+              </div>
+              <div className="text-sm text-muted text-center">
+                {totalItems} item{totalItems !== 1 ? 's' : ''}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => processPayment('cash')}
+                className="bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                Cash
+              </button>
+              <button
+                onClick={() => processPayment('card')}
+                className="bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                Card
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="w-full py-2 px-4 border border-muted rounded-lg text-muted hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

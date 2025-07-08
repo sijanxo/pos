@@ -100,6 +100,7 @@ export default function Login() {
                 <div><strong>Admin:</strong> admin / admin</div>
                 <div><strong>Manager:</strong> manager / manager</div>
                 <div><strong>Cashier:</strong> cashier1 / cashier1</div>
+                <div><strong>Cashier:</strong> cashier2 / cashier2</div>
               </div>
             </div>
           </CardContent>
