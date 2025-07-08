@@ -44,7 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           id={inputId}
           className={cn(
             'input-field w-full',
-            leftIcon && 'pl-10',
+            leftIcon && 'pl-12',
             rightIcon && 'pr-10',
             error && 'border-error focus:border-error',
             !error && 'border-muted focus:border-primary'
