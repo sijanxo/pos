@@ -342,7 +342,7 @@ export default function Sales() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
           
-          <div className="relative bg-white rounded-lg p-4 mx-4 w-full max-w-2xl h-[580px] border-2 border-blue-500 flex flex-col">
+          <div className="relative bg-white rounded-lg p-4 mx-4 w-full max-w-2xl h-[520px] border-2 border-blue-500 flex flex-col">
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
             <div className="flex-shrink-0 mb-3">
@@ -407,7 +407,7 @@ export default function Sales() {
                 </div>
               </div>
 
-              <div className="mb-3 h-24">
+              <div className="mb-3 h-20">
                 {remainingBalance > 0 ? (
                   <div className="p-2 bg-gray-100 rounded h-full">
                     <div className="flex justify-between items-center mb-1">
@@ -464,13 +464,13 @@ export default function Sales() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
-                      Press Enter, click elsewhere, click 'cash', or click amount again
+                      Enter, click elsewhere, or 'cash' to apply
                     </div>
-                    <div className="h-6 mt-1">
+                    <div className="h-5 mt-1">
                       {customerPayment > 0 ? (
                         <div className="flex justify-between items-center">
-                          <span className="text-black font-medium text-sm">Change</span>
-                          <span className={`font-bold text-sm ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className="text-black font-medium text-xs">Change</span>
+                          <span className={`font-bold text-xs ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
                             ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
                           </span>
                         </div>
@@ -486,13 +486,13 @@ export default function Sales() {
             </div>
 
             {remainingBalance > 0 && (
-              <div className="flex-1 flex gap-3 min-h-0">
-                <div className="flex-1">
-                  <div className="grid grid-cols-3 gap-2">
+              <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
+                <div className="flex-1 min-h-0">
+                  <div className="grid grid-cols-3 gap-1 h-full max-h-40">
                     {generateCashAmounts().map((amount) => (
                       <button
                         key={amount}
-                        className={`aspect-square rounded text-black font-medium text-sm ${
+                        className={`rounded text-black font-medium text-xs h-12 ${
                           customerPayment === amount 
                             ? 'bg-blue-300 border-2 border-blue-500' 
                             : 'bg-gray-200 hover:bg-gray-300'
@@ -514,9 +514,9 @@ export default function Sales() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 w-16">
+                <div className="flex flex-col gap-1 w-14">
                   <button 
-                    className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm"
+                    className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12"
                     onClick={() => {
                       if (customerPayment > 0) {
                         setAppliedCashPayment(appliedCashPayment + customerPayment)
@@ -527,20 +527,20 @@ export default function Sales() {
                   >
                     cash
                   </button>
-                  <button className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm">
+                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
                     credit
                   </button>
-                  <button className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm">
+                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
                     debit
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="flex-shrink-0 mt-auto pt-3">
-              <div className="flex gap-3 border-t border-gray-200 pt-3">
+            <div className="flex-shrink-0 mt-auto pt-2 h-16">
+              <div className="flex gap-3 border-t border-gray-200 pt-2 h-full">
                 <button
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm"
                   onClick={() => {
                     // Return to cart - keep cart intact, just close modal and reset payment state
                     setCustomerPayment(0)
@@ -552,7 +552,7 @@ export default function Sales() {
                   return
                 </button>
                 <button
-                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium rounded text-sm"
                   onClick={() => {
                     // Cancel entire transaction - clear cart and close modal
                     setCartItems([])
