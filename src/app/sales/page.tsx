@@ -231,7 +231,35 @@ export default function Sales() {
                       >
                         <Minus size={16} className="text-gray-300" />
                       </button>
-                      <span className="w-8 text-center">{item.quantity}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          if (value === '') {
+                            // Allow empty value temporarily while typing
+                            return
+                          }
+                          const newQuantity = parseInt(value, 10)
+                          if (!isNaN(newQuantity) && newQuantity >= 1) {
+                            updateQuantity(item.id, newQuantity)
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => {
+                          // If the field is empty on blur, reset to 1
+                          if (e.target.value === '' || parseInt(e.target.value, 10) < 1) {
+                            updateQuantity(item.id, 1)
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            (e.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-gray-100 focus:outline-none focus:border-amber-500 focus:bg-gray-600"
+                      />
                       <button
                         className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
                         onClick={() =>
