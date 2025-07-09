@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, ReactNode, forwardRef } from 'react';
+import { InputHTMLAttributes, ReactNode, forwardRef, useId } from 'react';
 import { cn } from '@/utils';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -19,7 +19,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   id,
   ...props
 }, ref) => {
-  const inputId = id || `input-${Math.random().toString(36).substring(7)}`;
+  const reactId = useId();
+  const inputId = id || reactId;
 
   return (
     <div className={cn('input-group', fullWidth && 'w-full', className)}>
