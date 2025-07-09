@@ -449,7 +449,7 @@ export default function Sales() {
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Press Enter or click elsewhere to apply payment
+                  Press Enter, click elsewhere, click 'cash', or click highlighted amount again to apply
                 </div>
                 {customerPayment > 0 && (
                   <div className="flex justify-between items-center mt-2">
@@ -475,7 +475,16 @@ export default function Sales() {
                           ? 'bg-blue-300 border-2 border-blue-500' 
                           : 'bg-gray-200 hover:bg-gray-300'
                       }`}
-                      onClick={() => setCustomerPayment(amount)}
+                      onClick={() => {
+                        // If clicking the same amount that's already entered, apply it
+                        if (customerPayment === amount) {
+                          setAppliedCashPayment(appliedCashPayment + customerPayment)
+                          setCustomerPayment(0)
+                        } else {
+                          // Otherwise just set the new amount
+                          setCustomerPayment(amount)
+                        }
+                      }}
                     >
                       ${amount.toFixed(2)}
                     </button>
@@ -485,7 +494,15 @@ export default function Sales() {
 
               {/* Right side - Payment methods */}
               <div className="flex flex-col gap-2 w-20">
-                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                <button 
+                  className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
+                  onClick={() => {
+                    if (customerPayment > 0) {
+                      setAppliedCashPayment(appliedCashPayment + customerPayment)
+                      setCustomerPayment(0)
+                    }
+                  }}
+                >
                   cash
                 </button>
                 <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
