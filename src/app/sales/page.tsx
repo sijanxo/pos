@@ -19,6 +19,7 @@ interface CartItem extends Product {
 export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+  const [customerPayment, setCustomerPayment] = useState(0)
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -331,7 +332,10 @@ export default function Sales() {
         <button 
           className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
           disabled={cartItems.length === 0}
-          onClick={() => setIsCheckoutModalOpen(true)}
+          onClick={() => {
+            setCustomerPayment(0)
+            setIsCheckoutModalOpen(true)
+          }}
         >
           Pay
         </button>
@@ -343,7 +347,10 @@ export default function Sales() {
           {/* Backdrop overlay */}
           <div 
             className="absolute inset-0 bg-black bg-opacity-50"
-            onClick={() => setIsCheckoutModalOpen(false)}
+            onClick={() => {
+              setCustomerPayment(0)
+              setIsCheckoutModalOpen(false)
+            }}
           ></div>
           
           {/* Modal content */}
@@ -351,17 +358,31 @@ export default function Sales() {
             {/* Modal header */}
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-            {/* Total and Quantity */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-black font-medium">Total</span>
-                <span className="text-black font-bold">{totalAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-black font-medium">Quantity</span>
-                <span className="text-black font-bold">{totalQuantity}</span>
-              </div>
-            </div>
+                         {/* Total and Quantity */}
+             <div className="mb-4">
+               <div className="flex justify-between items-center mb-2">
+                 <span className="text-black font-medium">Total</span>
+                 <span className="text-black font-bold">{totalAmount.toFixed(2)}</span>
+               </div>
+               <div className="flex justify-between items-center">
+                 <span className="text-black font-medium">Quantity</span>
+                 <span className="text-black font-bold">{totalQuantity}</span>
+               </div>
+             </div>
+
+             {/* Customer Payment and Change */}
+             <div className="mb-4 p-3 bg-gray-100 rounded">
+               <div className="flex justify-between items-center mb-2">
+                 <span className="text-black font-medium">Customer Payment</span>
+                 <span className="text-black font-bold">${customerPayment.toFixed(2)}</span>
+               </div>
+               <div className="flex justify-between items-center">
+                 <span className="text-black font-medium">Change</span>
+                 <span className={`font-bold ${customerPayment >= totalAmount ? 'text-green-600' : 'text-red-600'}`}>
+                   ${Math.max(0, customerPayment - totalAmount).toFixed(2)}
+                 </span>
+               </div>
+             </div>
 
             <div className="flex gap-4">
               {/* Left side - Cash amounts */}
@@ -370,7 +391,12 @@ export default function Sales() {
                   {generateCashAmounts().map((amount) => (
                     <button
                       key={amount}
-                      className="aspect-square bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm"
+                      className={`aspect-square rounded text-black font-medium text-sm ${
+                        customerPayment === amount 
+                          ? 'bg-blue-300 border-2 border-blue-500' 
+                          : 'bg-gray-200 hover:bg-gray-300'
+                      }`}
+                      onClick={() => setCustomerPayment(amount)}
                     >
                       ${amount.toFixed(2)}
                     </button>
@@ -392,21 +418,27 @@ export default function Sales() {
               </div>
             </div>
 
-            {/* Bottom buttons */}
-            <div className="flex gap-3 mt-4">
-              <button
-                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
-                onClick={() => setIsCheckoutModalOpen(false)}
-              >
-                return
-              </button>
-              <button
-                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
-                onClick={() => setIsCheckoutModalOpen(false)}
-              >
-                cancel
-              </button>
-            </div>
+                         {/* Bottom buttons */}
+             <div className="flex gap-3 mt-4">
+               <button
+                 className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                 onClick={() => {
+                   setCustomerPayment(0)
+                   setIsCheckoutModalOpen(false)
+                 }}
+               >
+                 return
+               </button>
+               <button
+                 className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                 onClick={() => {
+                   setCustomerPayment(0)
+                   setIsCheckoutModalOpen(false)
+                 }}
+               >
+                 cancel
+               </button>
+             </div>
           </div>
         </div>
       )}
