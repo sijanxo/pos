@@ -234,13 +234,10 @@ export default function Sales() {
                       <input
                         type="number"
                         min="1"
-                        value={item.quantity}
+                        defaultValue={item.quantity}
+                        key={`${item.id}-${item.quantity}`}
                         onChange={(e) => {
                           const value = e.target.value
-                          if (value === '') {
-                            // Allow empty value temporarily while typing
-                            return
-                          }
                           const newQuantity = parseInt(value, 10)
                           if (!isNaN(newQuantity) && newQuantity >= 1) {
                             updateQuantity(item.id, newQuantity)
@@ -248,9 +245,11 @@ export default function Sales() {
                         }}
                         onFocus={(e) => e.target.select()}
                         onBlur={(e) => {
-                          // If the field is empty on blur, reset to 1
-                          if (e.target.value === '' || parseInt(e.target.value, 10) < 1) {
-                            updateQuantity(item.id, 1)
+                          // If the field is empty on blur, reset to current quantity
+                          const value = e.target.value
+                          const newQuantity = parseInt(value, 10)
+                          if (value === '' || isNaN(newQuantity) || newQuantity < 1) {
+                            e.target.value = item.quantity.toString()
                           }
                         }}
                         onKeyDown={(e) => {
