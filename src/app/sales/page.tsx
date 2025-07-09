@@ -147,14 +147,6 @@ export default function Sales() {
 
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 bg-gray-800">
-        <h1 className="text-xl font-semibold">Sales</h1>
-        <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center">
-          <UserIcon size={18} />
-        </div>
-      </div>
-
       {/* Top Section - Search, Results, Cart */}
       <div className="flex-1 overflow-hidden flex flex-col p-4">
         {/* Search Bar */}
