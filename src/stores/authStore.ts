@@ -1,14 +1,12 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 import { User, AuthState } from '@/types';
 import { mockUsers } from '@/lib/mockData';
-import { setLocalStorage, getLocalStorage, removeLocalStorage } from '@/utils';
 
 interface AuthStore extends AuthState {
   // Auth actions
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
-  checkAuth: () => void;
   
   // Permission helpers
   hasPermission: (action: string) => boolean;
@@ -46,108 +44,66 @@ const resourceAccess = {
 
 export const useAuthStore = create<AuthStore>()(
   devtools(
-    persist(
-      (set, get) => ({
-        // Initial state
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
+    (set, get) => ({
+      // Initial state - start with admin user logged in for UI demo
+      user: mockUsers[0], // Admin user
+      isAuthenticated: true,
+      isLoading: false,
 
-        // Auth actions
-        login: async (username: string, password: string): Promise<boolean> => {
-          set({ isLoading: true });
+      // Auth actions
+      login: (username: string, password: string): boolean => {
+        // Hard-coded credentials for UI demo
+        const validCredentials = {
+          'admin': 'admin',
+          'manager': 'manager',
+          'cashier1': 'cashier1',
+          'cashier2': 'cashier2',
+        };
 
-          // Simulate API call delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Mock authentication - in real app, this would call an API
-          const user = mockUsers.find(u => u.username === username);
-          
-          // Simple password check (in real app, passwords would be hashed)
-          const validCredentials = {
-            'admin': 'admin',
-            'manager': 'manager',
-            'cashier1': 'cashier1',
-            'cashier2': 'cashier2',
-          };
-
-          if (user && validCredentials[username as keyof typeof validCredentials] === password) {
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            
-            // Store auth token in localStorage (in real app, use secure storage)
-            setLocalStorage('authToken', `token_${user.id}_${Date.now()}`);
-            setLocalStorage('userId', user.id);
-            
-            return true;
-          } else {
-            set({
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
-            return false;
-          }
-        },
-
-        logout: () => {
+        const user = mockUsers.find(u => u.username === username);
+        
+        if (user && validCredentials[username as keyof typeof validCredentials] === password) {
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        } else {
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
           });
-          
-          // Clear stored auth data
-          removeLocalStorage('authToken');
-          removeLocalStorage('userId');
-        },
+          return false;
+        }
+      },
 
-        checkAuth: () => {
-          const token = getLocalStorage('authToken', null);
-          const userId = getLocalStorage('userId', null);
-          
-          if (token && userId) {
-            // In real app, validate token with server
-            const user = mockUsers.find(u => u.id === userId);
-            if (user) {
-              set({
-                user,
-                isAuthenticated: true,
-                isLoading: false,
-              });
-            }
-          }
-        },
+      logout: () => {
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+      },
 
-        // Permission helpers
-        hasPermission: (action: string): boolean => {
-          const { user } = get();
-          if (!user) return false;
-          
-          const permissions = rolePermissions[user.role] || [];
-          return permissions.includes(action);
-        },
+      // Permission helpers
+      hasPermission: (action: string): boolean => {
+        const { user } = get();
+        if (!user) return false;
+        
+        const permissions = rolePermissions[user.role] || [];
+        return permissions.includes(action);
+      },
 
-        canAccess: (resource: string): boolean => {
-          const { user } = get();
-          if (!user) return false;
-          
-          const resources = resourceAccess[user.role] || [];
-          return resources.includes(resource);
-        },
-      }),
-      {
-        name: 'auth-store',
-        // Only persist user and isAuthenticated, not isLoading
-        partialize: (state) => ({
-          user: state.user,
-          isAuthenticated: state.isAuthenticated,
-        }),
-      }
-    ),
+      canAccess: (resource: string): boolean => {
+        const { user } = get();
+        if (!user) return false;
+        
+        const resources = resourceAccess[user.role] || [];
+        return resources.includes(resource);
+      },
+    }),
     {
       name: 'auth-store',
     }

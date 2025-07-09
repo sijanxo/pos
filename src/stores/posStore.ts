@@ -55,20 +55,18 @@ export const usePOSStore = create<POSStore>()(
       searchProducts: (query: string) => {
         set({ searchQuery: query, isLoading: true });
         
-        // Simulate API delay for realistic feel
-        setTimeout(() => {
-          if (query.trim() === '') {
-            set({ searchResults: mockProducts.slice(0, 20), isLoading: false });
-            return;
-          }
+        // Instant search for UI demo (no artificial delays)
+        if (query.trim() === '') {
+          set({ searchResults: mockProducts.slice(0, 20), isLoading: false });
+          return;
+        }
 
-          const results = mockProducts.filter(product => {
-            const searchText = `${product.name} ${product.brand} ${product.category} ${product.sku}`.toLowerCase();
-            return fuzzySearch(query, searchText) && product.isActive;
-          });
+        const results = mockProducts.filter(product => {
+          const searchText = `${product.name} ${product.brand} ${product.category} ${product.sku}`.toLowerCase();
+          return fuzzySearch(query, searchText) && product.isActive;
+        });
 
-          set({ searchResults: results, isLoading: false });
-        }, 100);
+        set({ searchResults: results, isLoading: false });
       },
 
       setSelectedProduct: (product: Product | null) => {
@@ -218,7 +216,7 @@ export const usePOSStore = create<POSStore>()(
           discount: cart.discount,
           total: cart.total,
           paymentMethod,
-          cashierId: '1', // TODO: Get from auth store
+          cashierId: '1', // Hard-coded for UI demo
           createdAt: new Date(),
           status: 'completed',
         };
@@ -231,9 +229,8 @@ export const usePOSStore = create<POSStore>()(
         // Clear cart after successful transaction
         set({ cart: initialCart });
 
-        // TODO: Update product stock quantities
-        // TODO: Save transaction to database
-
+        // In a real app, this would save to database and update inventory
+        // For UI demo, we just return the transaction
         return transaction;
       },
 
