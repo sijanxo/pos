@@ -146,9 +146,9 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
 
   return (
-    <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100">
+    <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
       {/* Top Section - Search, Results, Cart */}
-      <div className="flex-1 overflow-hidden flex flex-col p-4">
+      <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
         {/* Search Bar */}
         <div className="relative mb-4">
           <input
@@ -282,8 +282,8 @@ export default function Sales() {
         </div>
       </div>
 
-      {/* Bottom Section - Totals & Pay Button */}
-      <div className="bg-gray-800 p-4">
+      {/* Bottom Section - Totals & Pay Button - Fixed to bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 p-4 border-t border-gray-700 z-10">
         <div className="flex justify-between items-center mb-3">
           <div className="text-gray-300">
             <span className="font-medium mr-2">Total Items:</span>
