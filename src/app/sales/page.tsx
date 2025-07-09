@@ -540,7 +540,17 @@ export default function Sales() {
             <div className="flex-shrink-0 mt-auto pt-2 h-16">
               <div className="flex gap-3 border-t border-gray-200 pt-2 h-full">
                 <button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm"
+                  className="flex-1 py-3 px-4 font-medium rounded text-sm transition-colors"
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1d4ed8'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563eb'
+                  }}
                   onClick={() => {
                     // Return to cart - keep cart intact, just close modal and reset payment state
                     setCustomerPayment(0)
@@ -552,7 +562,17 @@ export default function Sales() {
                   return
                 </button>
                 <button
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium rounded text-sm"
+                  className="flex-1 py-3 px-4 font-medium rounded text-sm transition-colors"
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#b91c1c'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626'
+                  }}
                   onClick={() => {
                     // Cancel entire transaction - clear cart and close modal
                     setCartItems([])
