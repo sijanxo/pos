@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserIcon, Search, Plus, Minus, Trash2Icon } from 'lucide-react'
+import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
 interface Product {
   id: number
@@ -13,8 +13,6 @@ interface Product {
 interface CartItem extends Product {
   quantity: number
 }
-
-
 
 export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -66,22 +64,17 @@ export default function Sales() {
     },
   ])
 
-  // Handle keyboard navigation for search results
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!searchQuery) return // Only handle keyboard events when search is active
+      if (!searchQuery) return
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
-          setActiveItem((prev: number) =>
-            prev > 0 ? prev - 1 : searchResults.length - 1,
-          )
+          setActiveItem((prev: number) => prev > 0 ? prev - 1 : searchResults.length - 1)
           break
         case 'ArrowDown':
           e.preventDefault()
-          setActiveItem((prev: number) =>
-            prev < searchResults.length - 1 ? prev + 1 : 0,
-          )
+          setActiveItem((prev: number) => prev < searchResults.length - 1 ? prev + 1 : 0)
           break
         case 'Enter':
           e.preventDefault()
@@ -121,7 +114,6 @@ export default function Sales() {
         },
       ])
     }
-    // Clear search query after adding to cart
     setSearchQuery('')
   }
 
@@ -150,7 +142,6 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
-    // Generate cash amount options based on remaining balance - always return 9 amounts
   const generateCashAmounts = (): number[] => {
     const amounts: number[] = []
     const total = remainingBalance
@@ -159,10 +150,8 @@ export default function Sales() {
       return [1, 2, 5, 10, 20, 50, 100, 200, 500]
     }
     
-    // Add exact amount
     amounts.push(total)
     
-    // Add common bills that are greater than or equal to total
     const commonBills = [1, 2, 5, 10, 20, 50, 100, 200, 500]
     commonBills.forEach(bill => {
       if (bill >= total && !amounts.includes(bill)) {
@@ -170,7 +159,6 @@ export default function Sales() {
       }
     })
     
-    // Add rounded up amounts
     const roundedAmounts = [
       Math.ceil(total / 5) * 5,
       Math.ceil(total / 10) * 10,
@@ -185,7 +173,6 @@ export default function Sales() {
       }
     })
     
-    // Add additional convenient amounts if needed
     const additionalAmounts = [25, 30, 40, 75, 150, 250, 300, 400, 600, 750, 1000]
     additionalAmounts.forEach(amount => {
       if (amount > total && !amounts.includes(amount) && amounts.length < 12) {
@@ -193,10 +180,8 @@ export default function Sales() {
       }
     })
     
-    // Sort amounts
     const sortedAmounts = amounts.sort((a, b) => a - b)
     
-    // Ensure we have exactly 9 amounts
     while (sortedAmounts.length < 9) {
       const lastAmount = sortedAmounts[sortedAmounts.length - 1] || 1
       const increment = lastAmount >= 100 ? 100 : lastAmount >= 50 ? 50 : 10
@@ -213,26 +198,21 @@ export default function Sales() {
 
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
-      {/* Top Section - Search, Results, Cart */}
       <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
-        {/* Search Bar */}
         <div className="relative mb-4">
           <input
             type="text"
             placeholder="Search"
             className="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
             value={searchQuery}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
         </div>
 
-        {/* Search Results */}
         {searchQuery && (
           <div className="mb-4">
-            <h2 className="text-lg font-medium mb-2 text-gray-300">
-              Search Results
-            </h2>
+            <h2 className="text-lg font-medium mb-2 text-gray-300">Search Results</h2>
             <div className="space-y-2">
               {searchResults.map((result, index) => (
                 <div
@@ -248,21 +228,17 @@ export default function Sales() {
                     <span className="w-20">{result.sku}</span>
                     <span className="flex-1">{result.name}</span>
                   </div>
-                  <span className="font-medium">
-                    ${result.price.toFixed(2)}
-                  </span>
+                  <span className="font-medium">${result.price.toFixed(2)}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Cart Items */}
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
           {cartItems.length > 0 ? (
             <div className="space-y-2">
-              {/* Column Headers */}
               <div className="p-3 bg-gray-700 rounded-lg flex justify-between items-center font-medium text-gray-300 text-sm">
                 <div className="flex items-center gap-4">
                   <span className="w-[104px] text-center">Quantity</span>
@@ -272,10 +248,9 @@ export default function Sales() {
                 <div className="flex items-center gap-4">
                   <span className="w-24 text-right">Unit Price</span>
                   <span className="w-24 text-right mr-6">Total Price</span>
-                  <span className="w-6"></span> {/* Space for delete button */}
+                  <span className="w-6"></span>
                 </div>
               </div>
-              {/* Cart Items */}
               {cartItems.map((item) => (
                 <div
                   key={item.id}
@@ -285,9 +260,7 @@ export default function Sales() {
                     <div className="flex items-center gap-2">
                       <button
                         className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
-                        }
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       >
                         <Minus size={16} className="text-gray-300" />
                       </button>
@@ -313,9 +286,7 @@ export default function Sales() {
                       />
                       <button
                         className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
-                        }
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       >
                         <Plus size={16} className="text-gray-300" />
                       </button>
@@ -324,12 +295,8 @@ export default function Sales() {
                     <span className="flex-1">{item.name}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="w-24 text-right">
-                      ${item.price.toFixed(2)}
-                    </span>
-                    <span className="w-24 text-right font-medium">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </span>
+                    <span className="w-24 text-right">${item.price.toFixed(2)}</span>
+                    <span className="w-24 text-right font-medium">${(item.price * item.quantity).toFixed(2)}</span>
                     <button
                       className="p-1 rounded-md text-gray-400 hover:text-red-500"
                       onClick={() => removeFromCart(item.id)}
@@ -341,14 +308,11 @@ export default function Sales() {
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              No items in cart
-            </div>
+            <div className="text-center text-gray-500 py-8">No items in cart</div>
           )}
         </div>
       </div>
 
-      {/* Bottom Section - Totals & Pay Button - Fixed to bottom */}
       <div className="fixed bottom-0 left-0 right-0 bg-gray-800 p-4 border-t border-gray-700 z-10">
         <div className="flex justify-between items-center mb-3">
           <div className="text-gray-300">
@@ -357,9 +321,7 @@ export default function Sales() {
           </div>
           <div className="flex items-center">
             <span className="text-xl mr-2">Total</span>
-            <span className="text-2xl font-bold">
-              ${totalAmount.toFixed(2)}
-            </span>
+            <span className="text-2xl font-bold">${totalAmount.toFixed(2)}</span>
           </div>
         </div>
         <button 
@@ -376,10 +338,8 @@ export default function Sales() {
         </button>
       </div>
 
-      {/* Checkout Modal */}
       {isCheckoutModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop overlay */}
           <div 
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => {
@@ -390,14 +350,10 @@ export default function Sales() {
             }}
           ></div>
           
-          {/* Modal content */}
           <div className="relative bg-white rounded-lg p-6 mx-4 w-full max-w-2xl h-[600px] border-2 border-blue-500 flex flex-col">
-            {/* Modal header */}
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-            {/* Top section - Fixed height */}
             <div className="flex-shrink-0 mb-4">
-              {/* Original Total and Quantity */}
               <div className="mb-4 p-3 bg-gray-50 rounded">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-black font-medium">Original Total</span>
@@ -409,7 +365,6 @@ export default function Sales() {
                 </div>
               </div>
 
-              {/* Applied Cash Payment - Fixed height container */}
               <div className="mb-4 h-12">
                 {appliedCashPayment > 0 ? (
                   <div className="p-2 bg-green-100 border border-green-300 rounded">
@@ -431,7 +386,6 @@ export default function Sales() {
                 )}
               </div>
 
-              {/* Remaining Balance */}
               <div className={`mb-4 p-3 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
                 <div className="flex justify-between items-center">
                   <span className={`font-medium text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
@@ -441,13 +395,11 @@ export default function Sales() {
                     ${remainingBalance <= 0 ? '0.00' : remainingBalance.toFixed(2)}
                   </span>
                 </div>
-                {/* Complete Transaction button - Fixed height container */}
                 <div className="h-14 mt-2">
                   {remainingBalance <= 0 ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
-                        // Process complete payment and close modal
                         setCartItems([])
                         setCustomerPayment(0)
                         setCustomerPaymentInput('')
@@ -463,174 +415,160 @@ export default function Sales() {
                 </div>
               </div>
 
-              {/* Customer Payment Input - Fixed height container */}
               <div className="mb-4 h-32">
                 {remainingBalance > 0 ? (
-                <div className="p-3 bg-gray-100 rounded h-full">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-black font-medium">Customer Payment</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">$</span>
-                    <input
-                      type="text"
-                      value={customerPaymentInput}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Only allow numbers and one decimal point
-                        const regex = /^\d*\.?\d{0,2}$/
-                        if (regex.test(value) || value === '') {
-                          setCustomerPaymentInput(value)
-                          setCustomerPayment(parseFloat(value) || 0)
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        // Handle Enter key
-                        if (e.key === 'Enter' && customerPayment > 0) {
-                          setAppliedCashPayment(appliedCashPayment + customerPayment)
-                          setCustomerPayment(0)
-                          setCustomerPaymentInput('')
-                          return
-                        }
-                        
-                        // Allow: backspace, delete, tab, escape, enter
-                        if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
-                          return
-                        }
-                        
-                        // Allow decimal point if not already present
-                        if (e.key === '.' && !customerPaymentInput.includes('.')) {
-                          return
-                        }
-                        
-                        // Allow numbers
-                        if (/[0-9]/.test(e.key)) {
-                          return
-                        }
-                        
-                        // Allow Ctrl combinations (copy, paste, etc.)
-                        if (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
-                          return
-                        }
-                        
-                        // Block everything else
-                        e.preventDefault()
-                      }}
-                      onBlur={() => {
-                        if (customerPayment > 0) {
-                          setAppliedCashPayment(appliedCashPayment + customerPayment)
-                          setCustomerPayment(0)
-                          setCustomerPaymentInput('')
-                        }
-                      }}
-                      placeholder="0.00"
-                      className="w-24 px-3 py-2 border-2 border-gray-300 rounded text-right text-black font-bold focus:border-blue-500 focus:outline-none transition-colors"
-                    />
+                  <div className="p-3 bg-gray-100 rounded h-full">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-black font-medium">Customer Payment</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">$</span>
+                        <input
+                          type="text"
+                          value={customerPaymentInput}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            const regex = /^\d*\.?\d{0,2}$/
+                            if (regex.test(value) || value === '') {
+                              setCustomerPaymentInput(value)
+                              setCustomerPayment(parseFloat(value) || 0)
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && customerPayment > 0) {
+                              setAppliedCashPayment(appliedCashPayment + customerPayment)
+                              setCustomerPayment(0)
+                              setCustomerPaymentInput('')
+                              return
+                            }
+                            
+                            if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
+                              return
+                            }
+                            
+                            if (e.key === '.' && !customerPaymentInput.includes('.')) {
+                              return
+                            }
+                            
+                            if (/[0-9]/.test(e.key)) {
+                              return
+                            }
+                            
+                            if (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
+                              return
+                            }
+                            
+                            e.preventDefault()
+                          }}
+                          onBlur={() => {
+                            if (customerPayment > 0) {
+                              setAppliedCashPayment(appliedCashPayment + customerPayment)
+                              setCustomerPayment(0)
+                              setCustomerPaymentInput('')
+                            }
+                          }}
+                          placeholder="0.00"
+                          className="w-24 px-3 py-2 border-2 border-gray-300 rounded text-right text-black font-bold focus:border-blue-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Press Enter, click elsewhere, click 'cash', or click highlighted amount again to apply
+                    </div>
+                    <div className="h-8 mt-2">
+                      {customerPayment > 0 ? (
+                        <div className="flex justify-between items-center">
+                          <span className="text-black font-medium">Change</span>
+                          <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
+                            ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="h-full"></div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full"></div>
+                )}
+              </div>
+            </div>
+
+            {remainingBalance > 0 && (
+              <div className="flex-1 flex gap-4">
+                <div className="flex-1">
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {generateCashAmounts().map((amount) => (
+                      <button
+                        key={amount}
+                        className={`aspect-square rounded text-black font-medium text-sm ${
+                          customerPayment === amount 
+                            ? 'bg-blue-300 border-2 border-blue-500' 
+                            : 'bg-gray-200 hover:bg-gray-300'
+                        }`}
+                        onClick={() => {
+                          if (customerPayment === amount) {
+                            setAppliedCashPayment(appliedCashPayment + customerPayment)
+                            setCustomerPayment(0)
+                            setCustomerPaymentInput('')
+                          } else {
+                            setCustomerPayment(amount)
+                            setCustomerPaymentInput(amount.toString())
+                          }
+                        }}
+                      >
+                        ${amount.toFixed(2)}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Press Enter, click elsewhere, click 'cash', or click highlighted amount again to apply
-                </div>
-                {/* Change section - Fixed height container */}
-                <div className="h-8 mt-2">
-                  {customerPayment > 0 ? (
-                    <div className="flex justify-between items-center">
-                      <span className="text-black font-medium">Change</span>
-                      <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
-                        ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="h-full"></div>
-                  )}
-                </div>
-              </div>
-              ) : (
-                <div className="h-full"></div>
-              )}
-            </div>
 
-            {/* Main content area - Cash amounts and payment methods */}
-            {remainingBalance > 0 && (
-            <div className="flex-1 flex gap-4">
-              {/* Left side - Cash amounts */}
-              <div className="flex-1">
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {generateCashAmounts().map((amount) => (
-                    <button
-                      key={amount}
-                      className={`aspect-square rounded text-black font-medium text-sm ${
-                        customerPayment === amount 
-                          ? 'bg-blue-300 border-2 border-blue-500' 
-                          : 'bg-gray-200 hover:bg-gray-300'
-                      }`}
-                      onClick={() => {
-                        // If clicking the same amount that's already entered, apply it
-                        if (customerPayment === amount) {
-                          setAppliedCashPayment(appliedCashPayment + customerPayment)
-                          setCustomerPayment(0)
-                          setCustomerPaymentInput('')
-                        } else {
-                          // Otherwise just set the new amount
-                          setCustomerPayment(amount)
-                          setCustomerPaymentInput(amount.toString())
-                        }
-                      }}
-                    >
-                      ${amount.toFixed(2)}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-2 w-20">
+                  <button 
+                    className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
+                    onClick={() => {
+                      if (customerPayment > 0) {
+                        setAppliedCashPayment(appliedCashPayment + customerPayment)
+                        setCustomerPayment(0)
+                        setCustomerPaymentInput('')
+                      }
+                    }}
+                  >
+                    cash
+                  </button>
+                  <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                    credit
+                  </button>
+                  <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                    debit
+                  </button>
                 </div>
               </div>
-
-              {/* Right side - Payment methods */}
-              <div className="flex flex-col gap-2 w-20">
-                <button 
-                  className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
-                  onClick={() => {
-                    if (customerPayment > 0) {
-                      setAppliedCashPayment(appliedCashPayment + customerPayment)
-                      setCustomerPayment(0)
-                      setCustomerPaymentInput('')
-                    }
-                  }}
-                >
-                  cash
-                </button>
-                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
-                  credit
-                </button>
-                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
-                  debit
-                </button>
-              </div>
-            </div>
             )}
 
-            {/* Bottom buttons - Fixed at bottom */}
             <div className="flex-shrink-0 mt-auto">
               <div className="flex gap-3 pt-4 border-t border-gray-200">
-               <button
-                 className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
-                 onClick={() => {
-                   setCustomerPayment(0)
-                   setCustomerPaymentInput('')
-                   setAppliedCashPayment(0)
-                   setIsCheckoutModalOpen(false)
-                 }}
-               >
-                 return
-               </button>
-               <button
-                 className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
-                 onClick={() => {
-                   setCustomerPayment(0)
-                   setCustomerPaymentInput('')
-                   setAppliedCashPayment(0)
-                   setIsCheckoutModalOpen(false)
-                 }}
-               >
-                 cancel
-               </button>
+                <button
+                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                  onClick={() => {
+                    setCustomerPayment(0)
+                    setCustomerPaymentInput('')
+                    setAppliedCashPayment(0)
+                    setIsCheckoutModalOpen(false)
+                  }}
+                >
+                  return
+                </button>
+                <button
+                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                  onClick={() => {
+                    setCustomerPayment(0)
+                    setCustomerPaymentInput('')
+                    setAppliedCashPayment(0)
+                    setIsCheckoutModalOpen(false)
+                  }}
+                >
+                  cancel
+                </button>
               </div>
             </div>
           </div>
