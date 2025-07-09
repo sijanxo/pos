@@ -235,9 +235,10 @@ export default function Sales() {
                       </button>
                       <input
                         key={`quantity-${item.id}-${item.quantity}`}
-                        type="number"
-                        min="1"
-                        defaultValue={item.quantity}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        defaultValue={item.quantity.toString()}
                         onChange={(e) => {
                           const value = parseInt(e.target.value, 10)
                           if (!isNaN(value) && value >= 1) {
@@ -255,13 +256,18 @@ export default function Sales() {
                           if (e.key === 'Enter') {
                             (e.target as HTMLInputElement).blur()
                           }
+                          // Only allow numbers and control keys
+                          if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                            e.preventDefault()
+                          }
                         }}
-                        className="w-12 h-8 text-center !bg-gray-700 border border-gray-600 rounded !text-white focus:outline-none focus:border-amber-500 focus:!bg-gray-600 !font-medium"
+                        className="w-12 h-8 text-center !bg-gray-700 border border-gray-600 rounded !text-white focus:outline-none focus:border-amber-500 focus:!bg-gray-600 !font-bold"
                         style={{ 
-                          color: '#ffffff !important',
-                          backgroundColor: '#374151 !important',
-                          fontSize: '14px !important',
-                          fontWeight: '500 !important'
+                          color: '#ffffff',
+                          backgroundColor: '#374151',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", monospace'
                         }}
                       />
                       <button
