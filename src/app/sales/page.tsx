@@ -18,6 +18,7 @@ interface CartItem extends Product {
 
 export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -296,10 +297,89 @@ export default function Sales() {
             </span>
           </div>
         </div>
-        <button className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors">
+        <button 
+          className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+          disabled={cartItems.length === 0}
+          onClick={() => setIsCheckoutModalOpen(true)}
+        >
           Pay
         </button>
       </div>
+
+      {/* Checkout Modal */}
+      {isCheckoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop overlay */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setIsCheckoutModalOpen(false)}
+          ></div>
+          
+          {/* Modal content */}
+          <div className="relative bg-gray-800 rounded-lg p-6 mx-4 w-full max-w-md border border-gray-700">
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              onClick={() => setIsCheckoutModalOpen(false)}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Modal header */}
+            <h2 className="text-2xl font-bold mb-6 text-white">Checkout</h2>
+
+            {/* Order summary */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-4 text-gray-300">Order Summary</h3>
+              <div className="space-y-2 mb-4">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center text-sm">
+                    <span className="text-gray-300">
+                      {item.quantity}x {item.name}
+                    </span>
+                    <span className="text-white font-medium">
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Total */}
+              <div className="border-t border-gray-600 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium text-gray-300">Total:</span>
+                  <span className="text-2xl font-bold text-white">
+                    ${totalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors"
+                onClick={() => setIsCheckoutModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors"
+                onClick={() => {
+                  // Here you would typically process the payment
+                  // For now, we'll just close the modal and clear the cart
+                  setCartItems([])
+                  setIsCheckoutModalOpen(false)
+                }}
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
