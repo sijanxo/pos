@@ -67,7 +67,13 @@ function QuantityInput({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-amber-500 focus:bg-gray-600 focus:text-white font-medium"
+      className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-amber-500 focus:bg-gray-600 font-medium"
+      style={{ 
+        color: '#ffffff',
+        backgroundColor: '#374151',
+        fontSize: '14px',
+        fontWeight: '500'
+      }}
     />
   )
 }
