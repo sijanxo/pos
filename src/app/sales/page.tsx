@@ -432,28 +432,32 @@ export default function Sales() {
                       step="0.01"
                       value={customerPayment}
                       onChange={(e) => setCustomerPayment(parseFloat(e.target.value) || 0)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customerPayment > 0) {
+                          setAppliedCashPayment(appliedCashPayment + customerPayment)
+                          setCustomerPayment(0)
+                        }
+                      }}
+                      onBlur={() => {
+                        if (customerPayment > 0) {
+                          setAppliedCashPayment(appliedCashPayment + customerPayment)
+                          setCustomerPayment(0)
+                        }
+                      }}
                       className="w-20 px-2 py-1 border border-gray-300 rounded text-right text-black font-bold"
                     />
                   </div>
                 </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Press Enter or click elsewhere to apply payment
+                </div>
                 {customerPayment > 0 && (
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mt-2">
                     <span className="text-black font-medium">Change</span>
                     <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
                       ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
                     </span>
                   </div>
-                )}
-                {customerPayment > 0 && customerPayment < remainingBalance && (
-                  <button
-                    className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded"
-                    onClick={() => {
-                      setAppliedCashPayment(appliedCashPayment + customerPayment)
-                      setCustomerPayment(0)
-                    }}
-                  >
-                    Apply Cash Payment (${customerPayment.toFixed(2)})
-                  </button>
                 )}
               </div>
               )}
