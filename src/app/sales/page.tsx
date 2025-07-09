@@ -237,13 +237,14 @@ export default function Sales() {
                         type="text"
                         defaultValue={item.quantity}
                         style={{
-                          width: '50px',
+                          width: '70px',
                           height: '30px',
                           textAlign: 'center',
                           backgroundColor: 'white',
                           color: 'black',
                           border: '2px solid black',
-                          fontSize: '18px'
+                          fontSize: '18px',
+                          padding: '2px'
                         }}
                         onChange={(e) => {
                           const value = parseInt(e.target.value, 10)
