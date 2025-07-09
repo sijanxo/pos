@@ -150,35 +150,65 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
-  // Generate cash amount options based on remaining balance
+    // Generate cash amount options based on remaining balance - always return 9 amounts
   const generateCashAmounts = (): number[] => {
     const amounts: number[] = []
     const total = remainingBalance
     
+    if (total <= 0) {
+      return [1, 2, 5, 10, 20, 50, 100, 200, 500]
+    }
+    
     // Add exact amount
     amounts.push(total)
     
-    // Add common bill denominations that are >= total
-    const commonBills = [5, 10, 20, 50, 100]
+    // Add common bills that are greater than or equal to total
+    const commonBills = [1, 2, 5, 10, 20, 50, 100, 200, 500]
     commonBills.forEach(bill => {
       if (bill >= total && !amounts.includes(bill)) {
         amounts.push(bill)
       }
     })
     
-    // Add some rounded up amounts
-    const roundedUp10 = Math.ceil(total / 10) * 10
-    const roundedUp5 = Math.ceil(total / 5) * 5
+    // Add rounded up amounts
+    const roundedAmounts = [
+      Math.ceil(total / 5) * 5,
+      Math.ceil(total / 10) * 10,
+      Math.ceil(total / 20) * 20,
+      Math.ceil(total / 50) * 50,
+      Math.ceil(total / 100) * 100
+    ]
     
-    if (roundedUp5 > total && !amounts.includes(roundedUp5)) {
-      amounts.push(roundedUp5)
-    }
-    if (roundedUp10 > total && !amounts.includes(roundedUp10)) {
-      amounts.push(roundedUp10)
+    roundedAmounts.forEach(amount => {
+      if (amount > total && !amounts.includes(amount)) {
+        amounts.push(amount)
+      }
+    })
+    
+    // Add additional convenient amounts if needed
+    const additionalAmounts = [25, 30, 40, 75, 150, 250, 300, 400, 600, 750, 1000]
+    additionalAmounts.forEach(amount => {
+      if (amount > total && !amounts.includes(amount) && amounts.length < 12) {
+        amounts.push(amount)
+      }
+    })
+    
+    // Sort amounts
+    const sortedAmounts = amounts.sort((a, b) => a - b)
+    
+    // Ensure we have exactly 9 amounts
+    while (sortedAmounts.length < 9) {
+      const lastAmount = sortedAmounts[sortedAmounts.length - 1] || 1
+      const increment = lastAmount >= 100 ? 100 : lastAmount >= 50 ? 50 : 10
+      const nextAmount = lastAmount + increment
+      if (!sortedAmounts.includes(nextAmount)) {
+        sortedAmounts.push(nextAmount)
+      } else {
+        sortedAmounts.push(nextAmount + increment)
+      }
     }
     
-    // Sort and take first 9 options
-    return amounts.sort((a, b) => a - b).slice(0, 9)
+    return sortedAmounts.slice(0, 9)
   }
 
   return (
@@ -361,12 +391,14 @@ export default function Sales() {
           ></div>
           
           {/* Modal content */}
-          <div className="relative bg-white rounded-lg p-6 mx-4 w-full max-w-lg border-2 border-blue-500">
+          <div className="relative bg-white rounded-lg p-6 mx-4 w-full max-w-2xl h-[600px] border-2 border-blue-500 flex flex-col">
             {/* Modal header */}
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-                                      {/* Original Total and Quantity */}
-              <div className="mb-4">
+            {/* Top section - Fixed height */}
+            <div className="flex-shrink-0 mb-4">
+              {/* Original Total and Quantity */}
+              <div className="mb-4 p-3 bg-gray-50 rounded">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-black font-medium">Original Total</span>
                   <span className="text-black font-bold">${totalAmount.toFixed(2)}</span>
@@ -500,9 +532,11 @@ export default function Sales() {
                 )}
               </div>
               )}
+            </div>
 
+            {/* Main content area - Cash amounts and payment methods */}
             {remainingBalance > 0 && (
-            <div className="flex gap-4">
+            <div className="flex-1 flex gap-4">
               {/* Left side - Cash amounts */}
               <div className="flex-1">
                 <div className="grid grid-cols-3 gap-2 mb-4">
@@ -557,8 +591,9 @@ export default function Sales() {
             </div>
             )}
 
-                         {/* Bottom buttons */}
-             <div className="flex gap-3 mt-4">
+            {/* Bottom buttons - Fixed at bottom */}
+            <div className="flex-shrink-0 mt-auto">
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
                <button
                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                  onClick={() => {
@@ -581,7 +616,8 @@ export default function Sales() {
                >
                  cancel
                </button>
-             </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
