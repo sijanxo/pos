@@ -9,11 +9,7 @@ import { useAuthStore, useCanAccess } from '@/stores/authStore';
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const { user, isAuthenticated, logout } = useAuthStore();
 
   useEffect(() => {
     if (!isAuthenticated) {

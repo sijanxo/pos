@@ -8,13 +8,13 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function Login() {
   const router = useRouter();
-  const { login, isLoading } = useAuthStore();
+  const { login } = useAuthStore();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
@@ -23,15 +23,11 @@ export default function Login() {
       return;
     }
 
-    try {
-      const success = await login(username, password);
-      if (success) {
-        router.push('/sales');
-      } else {
-        setError('Invalid username or password');
-      }
-    } catch (error) {
-      setError('Login failed. Please try again.');
+    const success = login(username, password);
+    if (success) {
+      router.push('/sales');
+    } else {
+      setError('Invalid username or password');
     }
   };
 
@@ -68,7 +64,6 @@ export default function Login() {
                 onChange={(e) => setUsername(e.target.value)}
                 leftIcon={<User size={20} />}
                 fullWidth
-                disabled={isLoading}
               />
 
               <Input
@@ -79,14 +74,12 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 leftIcon={<Lock size={20} />}
                 fullWidth
-                disabled={isLoading}
               />
 
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
-                loading={isLoading}
                 className="w-full"
               >
                 Sign In
