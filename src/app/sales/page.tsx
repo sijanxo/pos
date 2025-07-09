@@ -222,7 +222,7 @@ export default function Sales() {
             placeholder="Search"
             className="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
         </div>
@@ -409,23 +409,27 @@ export default function Sales() {
                 </div>
               </div>
 
-              {/* Applied Cash Payment */}
-              {appliedCashPayment > 0 && (
-                <div className="mb-4 p-2 bg-green-100 border border-green-300 rounded">
-                  <div className="flex justify-between items-center">
-                    <span className="text-black font-medium">Cash Payment Applied</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-700 font-bold">-${appliedCashPayment.toFixed(2)}</span>
-                      <button
-                        className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
-                        onClick={() => setAppliedCashPayment(0)}
-                      >
-                        Clear
-                      </button>
+              {/* Applied Cash Payment - Fixed height container */}
+              <div className="mb-4 h-12">
+                {appliedCashPayment > 0 ? (
+                  <div className="p-2 bg-green-100 border border-green-300 rounded">
+                    <div className="flex justify-between items-center">
+                      <span className="text-black font-medium">Cash Payment Applied</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-700 font-bold">-${appliedCashPayment.toFixed(2)}</span>
+                        <button
+                          className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
+                          onClick={() => setAppliedCashPayment(0)}
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="h-full"></div>
+                )}
+              </div>
 
               {/* Remaining Balance */}
               <div className={`mb-4 p-3 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
@@ -437,8 +441,9 @@ export default function Sales() {
                     ${remainingBalance <= 0 ? '0.00' : remainingBalance.toFixed(2)}
                   </span>
                 </div>
-                {remainingBalance <= 0 && (
-                  <div className="mt-2">
+                {/* Complete Transaction button - Fixed height container */}
+                <div className="h-14 mt-2">
+                  {remainingBalance <= 0 ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
@@ -452,13 +457,16 @@ export default function Sales() {
                     >
                       Complete Transaction
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="h-full"></div>
+                  )}
+                </div>
               </div>
 
-              {/* Customer Payment Input */}
-              {remainingBalance > 0 && (
-              <div className="mb-4 p-3 bg-gray-100 rounded">
+              {/* Customer Payment Input - Fixed height container */}
+              <div className="mb-4 h-32">
+                {remainingBalance > 0 ? (
+                <div className="p-3 bg-gray-100 rounded h-full">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-black font-medium">Customer Payment</span>
                   <div className="flex items-center gap-2">
@@ -522,15 +530,22 @@ export default function Sales() {
                 <div className="text-xs text-gray-500 mt-1">
                   Press Enter, click elsewhere, click 'cash', or click highlighted amount again to apply
                 </div>
-                {customerPayment > 0 && (
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-black font-medium">Change</span>
-                    <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
-                      ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
-                    </span>
-                  </div>
-                )}
+                {/* Change section - Fixed height container */}
+                <div className="h-8 mt-2">
+                  {customerPayment > 0 ? (
+                    <div className="flex justify-between items-center">
+                      <span className="text-black font-medium">Change</span>
+                      <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
+                        ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="h-full"></div>
+                  )}
+                </div>
               </div>
+              ) : (
+                <div className="h-full"></div>
               )}
             </div>
 
