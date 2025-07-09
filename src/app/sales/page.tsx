@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { UserIcon, Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
 interface Product {
@@ -14,69 +14,7 @@ interface CartItem extends Product {
   quantity: number
 }
 
-// Separate component for quantity input to manage its own state
-function QuantityInput({ 
-  initialValue, 
-  onUpdate 
-}: { 
-  initialValue: number
-  onUpdate: (value: number) => void 
-}) {
-  const [inputValue, setInputValue] = useState(initialValue.toString())
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Update local state when parent quantity changes (from +/- buttons)
-  useEffect(() => {
-    setInputValue(initialValue.toString())
-  }, [initialValue])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setInputValue(value)
-    
-    const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 1) {
-      onUpdate(numValue)
-    }
-  }
-
-  const handleBlur = () => {
-    const numValue = parseInt(inputValue, 10)
-    if (isNaN(numValue) || numValue < 1) {
-      setInputValue(initialValue.toString())
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      inputRef.current?.blur()
-    }
-  }
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.select()
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      type="number"
-      min="1"
-      value={inputValue}
-      onChange={handleChange}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-amber-500 focus:bg-gray-600 font-medium"
-      style={{ 
-        color: '#ffffff',
-        backgroundColor: '#374151',
-        fontSize: '14px',
-        fontWeight: '500'
-      }}
-    />
-  )
-}
 
 export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -295,9 +233,36 @@ export default function Sales() {
                       >
                         <Minus size={16} className="text-gray-300" />
                       </button>
-                      <QuantityInput
-                        initialValue={item.quantity}
-                        onUpdate={(newQuantity) => updateQuantity(item.id, newQuantity)}
+                      <input
+                        key={`quantity-${item.id}-${item.quantity}`}
+                        type="number"
+                        min="1"
+                        defaultValue={item.quantity}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value, 10)
+                          if (!isNaN(value) && value >= 1) {
+                            updateQuantity(item.id, value)
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => {
+                          const value = parseInt(e.target.value, 10)
+                          if (isNaN(value) || value < 1) {
+                            e.target.value = item.quantity.toString()
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            (e.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        className="w-12 h-8 text-center !bg-gray-700 border border-gray-600 rounded !text-white focus:outline-none focus:border-amber-500 focus:!bg-gray-600 !font-medium"
+                        style={{ 
+                          color: '#ffffff !important',
+                          backgroundColor: '#374151 !important',
+                          fontSize: '14px !important',
+                          fontWeight: '500 !important'
+                        }}
                       />
                       <button
                         className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
