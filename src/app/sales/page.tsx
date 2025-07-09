@@ -316,65 +316,64 @@ export default function Sales() {
           ></div>
           
           {/* Modal content */}
-          <div className="relative bg-gray-800 rounded-lg p-6 mx-4 w-full max-w-md border border-gray-700">
-            {/* Close button */}
-            <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-              onClick={() => setIsCheckoutModalOpen(false)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
+          <div className="relative bg-white rounded-lg p-6 mx-4 w-full max-w-lg border-2 border-blue-500">
             {/* Modal header */}
-            <h2 className="text-2xl font-bold mb-6 text-white">Checkout</h2>
+            <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-            {/* Order summary */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-4 text-gray-300">Order Summary</h3>
-              <div className="space-y-2 mb-4">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-300">
-                      {item.quantity}x {item.name}
-                    </span>
-                    <span className="text-white font-medium">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+            {/* Total and Quantity */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-black font-medium">Total</span>
+                <span className="text-black font-bold">{totalAmount.toFixed(2)}</span>
               </div>
-              
-              {/* Total */}
-              <div className="border-t border-gray-600 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-medium text-gray-300">Total:</span>
-                  <span className="text-2xl font-bold text-white">
-                    ${totalAmount.toFixed(2)}
-                  </span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-black font-medium">Quantity</span>
+                <span className="text-black font-bold">{totalQuantity}</span>
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-4">
+              {/* Left side - Number pad */}
+              <div className="flex-1">
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                    <button
+                      key={num}
+                      className="aspect-square bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right side - Payment methods */}
+              <div className="flex flex-col gap-2 w-20">
+                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                  cash
+                </button>
+                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                  credit
+                </button>
+                <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                  debit
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom buttons */}
+            <div className="flex gap-3 mt-4">
               <button
-                className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition-colors"
+                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                 onClick={() => setIsCheckoutModalOpen(false)}
               >
-                Cancel
+                return
               </button>
               <button
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors"
-                onClick={() => {
-                  // Here you would typically process the payment
-                  // For now, we'll just close the modal and clear the cart
-                  setCartItems([])
-                  setIsCheckoutModalOpen(false)
-                }}
+                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                onClick={() => setIsCheckoutModalOpen(false)}
               >
-                Confirm Payment
+                cancel
               </button>
             </div>
           </div>
