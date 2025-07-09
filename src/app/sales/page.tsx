@@ -20,6 +20,7 @@ export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
   const [customerPayment, setCustomerPayment] = useState(0)
+  const [appliedCashPayment, setAppliedCashPayment] = useState(0)
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -146,11 +147,12 @@ export default function Sales() {
     0,
   )
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+  const remainingBalance = totalAmount - appliedCashPayment
 
-  // Generate cash amount options based on total
+  // Generate cash amount options based on remaining balance
   const generateCashAmounts = (): number[] => {
     const amounts: number[] = []
-    const total = totalAmount
+    const total = remainingBalance
     
     // Add exact amount
     amounts.push(total)
@@ -334,6 +336,7 @@ export default function Sales() {
           disabled={cartItems.length === 0}
           onClick={() => {
             setCustomerPayment(0)
+            setAppliedCashPayment(0)
             setIsCheckoutModalOpen(true)
           }}
         >
@@ -349,6 +352,7 @@ export default function Sales() {
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => {
               setCustomerPayment(0)
+              setAppliedCashPayment(0)
               setIsCheckoutModalOpen(false)
             }}
           ></div>
@@ -358,32 +362,103 @@ export default function Sales() {
             {/* Modal header */}
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-                         {/* Total and Quantity */}
-             <div className="mb-4">
-               <div className="flex justify-between items-center mb-2">
-                 <span className="text-black font-medium">Total</span>
-                 <span className="text-black font-bold">{totalAmount.toFixed(2)}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                 <span className="text-black font-medium">Quantity</span>
-                 <span className="text-black font-bold">{totalQuantity}</span>
-               </div>
-             </div>
+                                      {/* Original Total and Quantity */}
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-black font-medium">Original Total</span>
+                  <span className="text-black font-bold">${totalAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-black font-medium">Quantity</span>
+                  <span className="text-black font-bold">{totalQuantity}</span>
+                </div>
+              </div>
 
-             {/* Customer Payment and Change */}
-             <div className="mb-4 p-3 bg-gray-100 rounded">
-               <div className="flex justify-between items-center mb-2">
-                 <span className="text-black font-medium">Customer Payment</span>
-                 <span className="text-black font-bold">${customerPayment.toFixed(2)}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                 <span className="text-black font-medium">Change</span>
-                 <span className={`font-bold ${customerPayment >= totalAmount ? 'text-green-600' : 'text-red-600'}`}>
-                   ${Math.max(0, customerPayment - totalAmount).toFixed(2)}
-                 </span>
-               </div>
-             </div>
+              {/* Applied Cash Payment */}
+              {appliedCashPayment > 0 && (
+                <div className="mb-4 p-2 bg-green-100 border border-green-300 rounded">
+                  <div className="flex justify-between items-center">
+                    <span className="text-black font-medium">Cash Payment Applied</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-700 font-bold">-${appliedCashPayment.toFixed(2)}</span>
+                      <button
+                        className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
+                        onClick={() => setAppliedCashPayment(0)}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
+              {/* Remaining Balance */}
+              <div className={`mb-4 p-3 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
+                <div className="flex justify-between items-center">
+                  <span className={`font-medium text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
+                    {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
+                  </span>
+                  <span className={`font-bold text-xl ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
+                    ${remainingBalance <= 0 ? '0.00' : remainingBalance.toFixed(2)}
+                  </span>
+                </div>
+                {remainingBalance <= 0 && (
+                  <div className="mt-2">
+                    <button
+                      className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
+                      onClick={() => {
+                        // Process complete payment and close modal
+                        setCartItems([])
+                        setCustomerPayment(0)
+                        setAppliedCashPayment(0)
+                        setIsCheckoutModalOpen(false)
+                      }}
+                    >
+                      Complete Transaction
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Payment Input */}
+              {remainingBalance > 0 && (
+              <div className="mb-4 p-3 bg-gray-100 rounded">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-black font-medium">Customer Payment</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customerPayment}
+                      onChange={(e) => setCustomerPayment(parseFloat(e.target.value) || 0)}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded text-right text-black font-bold"
+                    />
+                  </div>
+                </div>
+                {customerPayment > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-black font-medium">Change</span>
+                    <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
+                      ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {customerPayment > 0 && customerPayment < remainingBalance && (
+                  <button
+                    className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded"
+                    onClick={() => {
+                      setAppliedCashPayment(appliedCashPayment + customerPayment)
+                      setCustomerPayment(0)
+                    }}
+                  >
+                    Apply Cash Payment (${customerPayment.toFixed(2)})
+                  </button>
+                )}
+              </div>
+              )}
+
+            {remainingBalance > 0 && (
             <div className="flex gap-4">
               {/* Left side - Cash amounts */}
               <div className="flex-1">
@@ -417,6 +492,7 @@ export default function Sales() {
                 </button>
               </div>
             </div>
+            )}
 
                          {/* Bottom buttons */}
              <div className="flex gap-3 mt-4">
@@ -424,6 +500,7 @@ export default function Sales() {
                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                  onClick={() => {
                    setCustomerPayment(0)
+                   setAppliedCashPayment(0)
                    setIsCheckoutModalOpen(false)
                  }}
                >
@@ -433,6 +510,7 @@ export default function Sales() {
                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                  onClick={() => {
                    setCustomerPayment(0)
+                   setAppliedCashPayment(0)
                    setIsCheckoutModalOpen(false)
                  }}
                >
