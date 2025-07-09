@@ -350,22 +350,22 @@ export default function Sales() {
             }}
           ></div>
           
-          <div className="relative bg-white rounded-lg p-6 mx-4 w-full max-w-2xl h-[600px] border-2 border-blue-500 flex flex-col">
+          <div className="relative bg-white rounded-lg p-4 mx-4 w-full max-w-2xl h-[580px] border-2 border-blue-500 flex flex-col">
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
 
-            <div className="flex-shrink-0 mb-4">
-              <div className="mb-4 p-3 bg-gray-50 rounded">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-black font-medium">Original Total</span>
+            <div className="flex-shrink-0 mb-3">
+              <div className="mb-3 p-2 bg-gray-50 rounded">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-black font-medium text-sm">Original Total</span>
                   <span className="text-black font-bold">${totalAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-black font-medium">Quantity</span>
+                  <span className="text-black font-medium text-sm">Quantity</span>
                   <span className="text-black font-bold">{totalQuantity}</span>
                 </div>
               </div>
 
-              <div className="mb-4 h-12">
+              <div className="mb-3 h-10">
                 {appliedCashPayment > 0 ? (
                   <div className="p-2 bg-green-100 border border-green-300 rounded">
                     <div className="flex justify-between items-center">
@@ -386,16 +386,16 @@ export default function Sales() {
                 )}
               </div>
 
-              <div className={`mb-4 p-3 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
+              <div className={`mb-3 p-2 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
+                  <span className={`font-medium ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
                     {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
                   </span>
-                  <span className={`font-bold text-xl ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
+                  <span className={`font-bold text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
                     ${remainingBalance <= 0 ? '0.00' : remainingBalance.toFixed(2)}
                   </span>
                 </div>
-                <div className="h-14 mt-2">
+                <div className="h-12 mt-2">
                   {remainingBalance <= 0 ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
@@ -415,11 +415,11 @@ export default function Sales() {
                 </div>
               </div>
 
-              <div className="mb-4 h-32">
+              <div className="mb-3 h-24">
                 {remainingBalance > 0 ? (
-                  <div className="p-3 bg-gray-100 rounded h-full">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-black font-medium">Customer Payment</span>
+                  <div className="p-2 bg-gray-100 rounded h-full">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-black font-medium text-sm">Customer Payment</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-600">$</span>
                         <input
@@ -467,18 +467,18 @@ export default function Sales() {
                             }
                           }}
                           placeholder="0.00"
-                          className="w-24 px-3 py-2 border-2 border-gray-300 rounded text-right text-black font-bold focus:border-blue-500 focus:outline-none transition-colors"
+                          className="w-20 px-2 py-1 border-2 border-gray-300 rounded text-right text-black font-bold focus:border-blue-500 focus:outline-none transition-colors"
                         />
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Press Enter, click elsewhere, click 'cash', or click highlighted amount again to apply
+                    <div className="text-xs text-gray-500">
+                      Press Enter, click elsewhere, click 'cash', or click amount again
                     </div>
-                    <div className="h-8 mt-2">
+                    <div className="h-6 mt-1">
                       {customerPayment > 0 ? (
                         <div className="flex justify-between items-center">
-                          <span className="text-black font-medium">Change</span>
-                          <span className={`font-bold ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className="text-black font-medium text-sm">Change</span>
+                          <span className={`font-bold text-sm ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
                             ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
                           </span>
                         </div>
@@ -494,9 +494,9 @@ export default function Sales() {
             </div>
 
             {remainingBalance > 0 && (
-              <div className="flex-1 flex gap-4">
+              <div className="flex-1 flex gap-3 min-h-0">
                 <div className="flex-1">
-                  <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="grid grid-cols-3 gap-2">
                     {generateCashAmounts().map((amount) => (
                       <button
                         key={amount}
@@ -522,9 +522,9 @@ export default function Sales() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 w-20">
+                <div className="flex flex-col gap-2 w-16">
                   <button 
-                    className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
+                    className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm"
                     onClick={() => {
                       if (customerPayment > 0) {
                         setAppliedCashPayment(appliedCashPayment + customerPayment)
@@ -535,20 +535,20 @@ export default function Sales() {
                   >
                     cash
                   </button>
-                  <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                  <button className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm">
                     credit
                   </button>
-                  <button className="py-3 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium">
+                  <button className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm">
                     debit
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="flex-shrink-0 mt-auto">
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <div className="flex-shrink-0 mt-auto pt-3">
+              <div className="flex gap-3 border-t border-gray-200 pt-3">
                 <button
-                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                  className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                   onClick={() => {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
@@ -559,7 +559,7 @@ export default function Sales() {
                   return
                 </button>
                 <button
-                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
+                  className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                   onClick={() => {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
