@@ -234,40 +234,22 @@ export default function Sales() {
                         <Minus size={16} className="text-gray-300" />
                       </button>
                       <input
-                        key={`quantity-${item.id}-${item.quantity}`}
                         type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        defaultValue={item.quantity.toString()}
+                        defaultValue={item.quantity}
+                        style={{
+                          width: '50px',
+                          height: '30px',
+                          textAlign: 'center',
+                          backgroundColor: 'white',
+                          color: 'black',
+                          border: '2px solid black',
+                          fontSize: '18px'
+                        }}
                         onChange={(e) => {
                           const value = parseInt(e.target.value, 10)
                           if (!isNaN(value) && value >= 1) {
                             updateQuantity(item.id, value)
                           }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        onBlur={(e) => {
-                          const value = parseInt(e.target.value, 10)
-                          if (isNaN(value) || value < 1) {
-                            e.target.value = item.quantity.toString()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            (e.target as HTMLInputElement).blur()
-                          }
-                          // Only allow numbers and control keys
-                          if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
-                            e.preventDefault()
-                          }
-                        }}
-                        className="w-12 h-8 text-center !bg-gray-700 border border-gray-600 rounded !text-white focus:outline-none focus:border-amber-500 focus:!bg-gray-600 !font-bold"
-                        style={{ 
-                          color: '#ffffff',
-                          backgroundColor: '#374151',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", monospace'
                         }}
                       />
                       <button
