@@ -146,6 +146,37 @@ export default function Sales() {
   )
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
 
+  // Generate cash amount options based on total
+  const generateCashAmounts = (): number[] => {
+    const amounts: number[] = []
+    const total = totalAmount
+    
+    // Add exact amount
+    amounts.push(total)
+    
+    // Add common bill denominations that are >= total
+    const commonBills = [5, 10, 20, 50, 100]
+    commonBills.forEach(bill => {
+      if (bill >= total && !amounts.includes(bill)) {
+        amounts.push(bill)
+      }
+    })
+    
+    // Add some rounded up amounts
+    const roundedUp10 = Math.ceil(total / 10) * 10
+    const roundedUp5 = Math.ceil(total / 5) * 5
+    
+    if (roundedUp5 > total && !amounts.includes(roundedUp5)) {
+      amounts.push(roundedUp5)
+    }
+    if (roundedUp10 > total && !amounts.includes(roundedUp10)) {
+      amounts.push(roundedUp10)
+    }
+    
+    // Sort and take first 9 options
+    return amounts.sort((a, b) => a - b).slice(0, 9)
+  }
+
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
       {/* Top Section - Search, Results, Cart */}
@@ -333,15 +364,15 @@ export default function Sales() {
             </div>
 
             <div className="flex gap-4">
-              {/* Left side - Number pad */}
+              {/* Left side - Cash amounts */}
               <div className="flex-1">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  {generateCashAmounts().map((amount) => (
                     <button
-                      key={num}
-                      className="aspect-square bg-gray-200 hover:bg-gray-300 rounded text-black font-medium"
+                      key={amount}
+                      className="aspect-square bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-sm"
                     >
-                      {num}
+                      ${amount.toFixed(2)}
                     </button>
                   ))}
                 </div>
