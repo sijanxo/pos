@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { UserIcon, Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
 interface Product {
@@ -12,6 +12,64 @@ interface Product {
 
 interface CartItem extends Product {
   quantity: number
+}
+
+// Separate component for quantity input to manage its own state
+function QuantityInput({ 
+  initialValue, 
+  onUpdate 
+}: { 
+  initialValue: number
+  onUpdate: (value: number) => void 
+}) {
+  const [inputValue, setInputValue] = useState(initialValue.toString())
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Update local state when parent quantity changes (from +/- buttons)
+  useEffect(() => {
+    setInputValue(initialValue.toString())
+  }, [initialValue])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setInputValue(value)
+    
+    const numValue = parseInt(value, 10)
+    if (!isNaN(numValue) && numValue >= 1) {
+      onUpdate(numValue)
+    }
+  }
+
+  const handleBlur = () => {
+    const numValue = parseInt(inputValue, 10)
+    if (isNaN(numValue) || numValue < 1) {
+      setInputValue(initialValue.toString())
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      inputRef.current?.blur()
+    }
+  }
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select()
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="number"
+      min="1"
+      value={inputValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-gray-100 focus:outline-none focus:border-amber-500 focus:bg-gray-600"
+    />
+  )
 }
 
 export default function Sales() {
@@ -231,33 +289,9 @@ export default function Sales() {
                       >
                         <Minus size={16} className="text-gray-300" />
                       </button>
-                      <input
-                        type="number"
-                        min="1"
-                        defaultValue={item.quantity}
-                        key={`${item.id}-${item.quantity}`}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          const newQuantity = parseInt(value, 10)
-                          if (!isNaN(newQuantity) && newQuantity >= 1) {
-                            updateQuantity(item.id, newQuantity)
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        onBlur={(e) => {
-                          // If the field is empty on blur, reset to current quantity
-                          const value = e.target.value
-                          const newQuantity = parseInt(value, 10)
-                          if (value === '' || isNaN(newQuantity) || newQuantity < 1) {
-                            e.target.value = item.quantity.toString()
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            (e.target as HTMLInputElement).blur()
-                          }
-                        }}
-                        className="w-12 h-8 text-center bg-gray-700 border border-gray-600 rounded text-gray-100 focus:outline-none focus:border-amber-500 focus:bg-gray-600"
+                      <QuantityInput
+                        initialValue={item.quantity}
+                        onUpdate={(newQuantity) => updateQuantity(item.id, newQuantity)}
                       />
                       <button
                         className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
