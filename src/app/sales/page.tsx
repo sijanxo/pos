@@ -20,6 +20,7 @@ export default function Sales() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
   const [customerPayment, setCustomerPayment] = useState(0)
+  const [customerPaymentInput, setCustomerPaymentInput] = useState('')
   const [appliedCashPayment, setAppliedCashPayment] = useState(0)
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
@@ -336,6 +337,7 @@ export default function Sales() {
           disabled={cartItems.length === 0}
           onClick={() => {
             setCustomerPayment(0)
+            setCustomerPaymentInput('')
             setAppliedCashPayment(0)
             setIsCheckoutModalOpen(true)
           }}
@@ -352,6 +354,7 @@ export default function Sales() {
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => {
               setCustomerPayment(0)
+              setCustomerPaymentInput('')
               setAppliedCashPayment(0)
               setIsCheckoutModalOpen(false)
             }}
@@ -410,6 +413,7 @@ export default function Sales() {
                         // Process complete payment and close modal
                         setCartItems([])
                         setCustomerPayment(0)
+                        setCustomerPaymentInput('')
                         setAppliedCashPayment(0)
                         setIsCheckoutModalOpen(false)
                       }}
@@ -428,23 +432,58 @@ export default function Sales() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">$</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={customerPayment}
-                      onChange={(e) => setCustomerPayment(parseFloat(e.target.value) || 0)}
+                      type="text"
+                      value={customerPaymentInput}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        // Only allow numbers and one decimal point
+                        const regex = /^\d*\.?\d{0,2}$/
+                        if (regex.test(value) || value === '') {
+                          setCustomerPaymentInput(value)
+                          setCustomerPayment(parseFloat(value) || 0)
+                        }
+                      }}
                       onKeyDown={(e) => {
+                        // Handle Enter key
                         if (e.key === 'Enter' && customerPayment > 0) {
                           setAppliedCashPayment(appliedCashPayment + customerPayment)
                           setCustomerPayment(0)
+                          setCustomerPaymentInput('')
+                          return
                         }
+                        
+                        // Allow: backspace, delete, tab, escape, enter
+                        if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
+                          return
+                        }
+                        
+                        // Allow decimal point if not already present
+                        if (e.key === '.' && !customerPaymentInput.includes('.')) {
+                          return
+                        }
+                        
+                        // Allow numbers
+                        if (/[0-9]/.test(e.key)) {
+                          return
+                        }
+                        
+                        // Allow Ctrl combinations (copy, paste, etc.)
+                        if (e.ctrlKey && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) {
+                          return
+                        }
+                        
+                        // Block everything else
+                        e.preventDefault()
                       }}
                       onBlur={() => {
                         if (customerPayment > 0) {
                           setAppliedCashPayment(appliedCashPayment + customerPayment)
                           setCustomerPayment(0)
+                          setCustomerPaymentInput('')
                         }
                       }}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded text-right text-black font-bold"
+                      placeholder="0.00"
+                      className="w-24 px-3 py-2 border-2 border-gray-300 rounded text-right text-black font-bold focus:border-blue-500 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -480,9 +519,11 @@ export default function Sales() {
                         if (customerPayment === amount) {
                           setAppliedCashPayment(appliedCashPayment + customerPayment)
                           setCustomerPayment(0)
+                          setCustomerPaymentInput('')
                         } else {
                           // Otherwise just set the new amount
                           setCustomerPayment(amount)
+                          setCustomerPaymentInput(amount.toString())
                         }
                       }}
                     >
@@ -500,6 +541,7 @@ export default function Sales() {
                     if (customerPayment > 0) {
                       setAppliedCashPayment(appliedCashPayment + customerPayment)
                       setCustomerPayment(0)
+                      setCustomerPaymentInput('')
                     }
                   }}
                 >
@@ -521,6 +563,7 @@ export default function Sales() {
                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                  onClick={() => {
                    setCustomerPayment(0)
+                   setCustomerPaymentInput('')
                    setAppliedCashPayment(0)
                    setIsCheckoutModalOpen(false)
                  }}
@@ -531,6 +574,7 @@ export default function Sales() {
                  className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded"
                  onClick={() => {
                    setCustomerPayment(0)
+                   setCustomerPaymentInput('')
                    setAppliedCashPayment(0)
                    setIsCheckoutModalOpen(false)
                  }}
