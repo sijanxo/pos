@@ -324,7 +324,17 @@ export default function Sales() {
             <span className="text-2xl font-bold">${totalAmount.toFixed(2)}</span>
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex gap-4">
+          <button 
+            className="w-1/2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+            disabled={cartItems.length === 0}
+            onClick={() => {
+              // TODO: Implement discount functionality
+              console.log('Apply discount clicked')
+            }}
+          >
+            Apply Discount
+          </button>
           <button 
             className="w-1/2 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             disabled={cartItems.length === 0}
