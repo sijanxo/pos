@@ -335,7 +335,7 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' ? `$${item.discount.amount} off` : `${item.discount.amount}% off`}
+                            {item.discount.type === 'flat' ? `$${item.discount.amount} off line total` : `${item.discount.amount}% off`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -360,7 +360,7 @@ export default function Sales() {
                       {item.discount && (
                         <div className="text-green-400 font-medium">
                           ${item.discount.type === 'flat' 
-                            ? Math.max(0, item.price - item.discount.amount).toFixed(2)
+                            ? (Math.max(0, (item.price * item.quantity) - item.discount.amount) / item.quantity).toFixed(2)
                             : (item.price * (1 - item.discount.amount / 100)).toFixed(2)
                           }
                         </div>
@@ -811,7 +811,10 @@ export default function Sales() {
                         onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
                         className="mr-2 text-amber-500"
                       />
-                      <span className="text-gray-300">$ (Flat Amount)</span>
+                      <div className="text-left">
+                        <span className="text-gray-300">$ (Flat Amount)</span>
+                        <div className="text-xs text-gray-500">Applied to total line item</div>
+                      </div>
                     </label>
                     <label className="flex items-center cursor-pointer">
                       <input
@@ -822,7 +825,10 @@ export default function Sales() {
                         onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
                         className="mr-2 text-amber-500"
                       />
-                      <span className="text-gray-300">% (Percentage)</span>
+                      <div className="text-left">
+                        <span className="text-gray-300">% (Percentage)</span>
+                        <div className="text-xs text-gray-500">Applied per unit</div>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -838,9 +844,27 @@ export default function Sales() {
                     placeholder="e.g., Employee discount, Promotion, etc."
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
                   />
-                </div>
+                                    </div>
 
-                <div className="flex justify-end gap-3 mt-6">
+                    {/* Validation message for flat discounts */}
+                    {selectedItemForDiscount && discountType === 'flat' && discountAmount && parseFloat(discountAmount) > 0 && (
+                      (() => {
+                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
+                        if (selectedItem) {
+                          const lineTotal = selectedItem.price * selectedItem.quantity
+                          if (parseFloat(discountAmount) > lineTotal) {
+                            return (
+                              <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
+                                <strong>Warning:</strong> Flat discount (${parseFloat(discountAmount).toFixed(2)}) cannot exceed line total (${lineTotal.toFixed(2)})
+                              </div>
+                            )
+                          }
+                        }
+                        return null
+                      })()
+                    )}
+
+                    <div className="flex justify-end gap-3 mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
                     onClick={() => setIsDiscountModalOpen(false)}
@@ -912,6 +936,41 @@ export default function Sales() {
 
                 {selectedItemForDiscount && (
                   <>
+                    {/* Show discount preview */}
+                    {discountAmount && parseFloat(discountAmount) > 0 && (
+                      <div className="p-3 bg-gray-700 border border-amber-500 rounded-lg">
+                        <div className="text-gray-300 text-sm font-medium mb-2">Discount Preview:</div>
+                        {(() => {
+                          const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
+                          if (!selectedItem) return null
+                          const originalLineTotal = selectedItem.price * selectedItem.quantity
+                          const discountValue = parseFloat(discountAmount)
+                          
+                          if (discountType === 'flat') {
+                            const newLineTotal = Math.max(0, originalLineTotal - discountValue)
+                            const newUnitPrice = newLineTotal / selectedItem.quantity
+                            return (
+                              <div className="text-gray-100 text-sm">
+                                <div>Original: ${selectedItem.price.toFixed(2)} × {selectedItem.quantity} = ${originalLineTotal.toFixed(2)}</div>
+                                <div className="text-amber-400">After discount: ${newUnitPrice.toFixed(2)} × {selectedItem.quantity} = ${newLineTotal.toFixed(2)}</div>
+                                <div className="text-green-400">Savings: ${Math.min(discountValue, originalLineTotal).toFixed(2)}</div>
+                              </div>
+                            )
+                          } else {
+                            const newUnitPrice = selectedItem.price * (1 - discountValue / 100)
+                            const newLineTotal = newUnitPrice * selectedItem.quantity
+                            return (
+                              <div className="text-gray-100 text-sm">
+                                <div>Original: ${selectedItem.price.toFixed(2)} × {selectedItem.quantity} = ${originalLineTotal.toFixed(2)}</div>
+                                <div className="text-amber-400">After discount: ${newUnitPrice.toFixed(2)} × {selectedItem.quantity} = ${newLineTotal.toFixed(2)}</div>
+                                <div className="text-green-400">Savings: ${(originalLineTotal - newLineTotal).toFixed(2)}</div>
+                              </div>
+                            )
+                          }
+                        })()}
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
                         Discount Amount
@@ -984,7 +1043,20 @@ export default function Sales() {
                   </button>
                   <button
                     className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={!selectedItemForDiscount || !discountAmount || parseFloat(discountAmount) <= 0}
+                    disabled={(() => {
+                      if (!selectedItemForDiscount || !discountAmount || parseFloat(discountAmount) <= 0) return true
+                      
+                      // For flat discounts on specific items, prevent discount larger than line total
+                      if (discountType === 'flat') {
+                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
+                        if (selectedItem) {
+                          const lineTotal = selectedItem.price * selectedItem.quantity
+                          return parseFloat(discountAmount) > lineTotal
+                        }
+                      }
+                      
+                      return false
+                    })()}
                     onClick={() => {
                       const amount = parseFloat(discountAmount)
                       setCartItems(cartItems.map(item => 
