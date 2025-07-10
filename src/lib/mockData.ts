@@ -1,5 +1,5 @@
 import { Product, User, Category, Transaction, CartItem } from '@/types';
-import { generateId, generateSKU, generateBarcode } from '@/utils';
+import { generateId, generateSKU, generateBarcode, toCents, fromCents, formatCurrency } from '@/utils';
 
 // Mock Categories
 export const mockCategories: Category[] = [
@@ -407,9 +407,10 @@ export function createMockTransaction(
     };
   });
   
-  const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const tax = subtotal * 0.08; // 8% tax
-  const total = subtotal + tax;
+  // Calculate totals in cents for precision
+  const subtotalInCents = items.reduce((sum, item) => sum + toCents(item.totalPrice), 0);
+  const taxInCents = Math.round(subtotalInCents * 0.08); // 8% tax, rounded to nearest cent
+  const totalInCents = subtotalInCents + taxInCents;
   
   const paymentMethods: Array<'cash' | 'card'> = ['cash', 'card'];
   const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
@@ -417,10 +418,10 @@ export function createMockTransaction(
   const transaction: Transaction = {
     id: generateId(),
     items,
-    subtotal: Number(subtotal.toFixed(2)),
-    tax: Number(tax.toFixed(2)),
+    subtotal: fromCents(subtotalInCents),
+    tax: fromCents(taxInCents),
     discount: 0,
-    total: Number(total.toFixed(2)),
+    total: fromCents(totalInCents),
     paymentMethod,
     cashierId,
     createdAt: transactionDate,
@@ -428,10 +429,10 @@ export function createMockTransaction(
   };
   
   if (paymentMethod === 'cash') {
-    // Add some realistic cash received amounts
-    const cashReceived = Math.ceil(total / 5) * 5; // Round up to nearest $5
-    transaction.cashReceived = cashReceived;
-    transaction.changeGiven = Number((cashReceived - total).toFixed(2));
+    // Add some realistic cash received amounts (round up to nearest $5)
+    const cashReceivedInCents = Math.ceil(totalInCents / 500) * 500;
+    transaction.cashReceived = fromCents(cashReceivedInCents);
+    transaction.changeGiven = fromCents(cashReceivedInCents - totalInCents);
   }
   
   return transaction;

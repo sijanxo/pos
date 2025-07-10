@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
 
 interface Product {
   id: number
@@ -266,7 +267,7 @@ export default function Sales() {
                     <span className="w-20">{result.sku}</span>
                     <span className="flex-1">{result.name}</span>
                   </div>
-                  <span className="font-medium">${result.price.toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(toCents(result.price))}</span>
                 </div>
               ))}
             </div>
@@ -356,28 +357,28 @@ export default function Sales() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-24 text-right">
-                      <span className="text-gray-100">${item.price.toFixed(2)}</span>
+                      <span className="text-gray-100">{formatCurrency(toCents(item.price))}</span>
                     </div>
                     <div className="w-24 text-right font-medium">
-                      {item.discount ? (
-                        <div>
-                          <span className="line-through text-gray-500 text-sm">${(item.price * item.quantity).toFixed(2)}</span>
-                          <div className="text-green-400">
-                            ${item.discount.type === 'flat' 
-                              ? Math.max(0, (item.price * item.quantity) - item.discount.amount).toFixed(2)
-                              : ((item.price * item.quantity) * (1 - item.discount.amount / 100)).toFixed(2)
-                            }
+                                              {item.discount ? (
+                          <div>
+                            <span className="line-through text-gray-500 text-sm">{formatCurrency(toCents(item.price * item.quantity))}</span>
+                            <div className="text-green-400">
+                              {item.discount.type === 'flat' 
+                                ? formatCurrency(Math.max(0, toCents(item.price * item.quantity) - toCents(item.discount.amount)))
+                                : formatCurrency(toCents(item.price * item.quantity) - calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))
+                              }
+                            </div>
+                            <div className="text-xs text-green-300">
+                              {item.discount.type === 'flat' 
+                                ? `(-${formatCurrency(Math.min(toCents(item.discount.amount), toCents(item.price * item.quantity)))})`
+                                : `(-${formatCurrency(calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))})`
+                              }
+                            </div>
                           </div>
-                          <div className="text-xs text-green-300">
-                            {item.discount.type === 'flat' 
-                              ? `(-$${Math.min(item.discount.amount, item.price * item.quantity).toFixed(2)})`
-                              : `(-$${((item.price * item.quantity) - ((item.price * item.quantity) * (1 - item.discount.amount / 100))).toFixed(2)})`
-                            }
-                          </div>
-                        </div>
-                      ) : (
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
-                      )}
+                        ) : (
+                          <span>{formatCurrency(toCents(item.price * item.quantity))}</span>
+                        )}
                     </div>
                     <button
                       className="p-1 rounded-md text-gray-400 hover:text-red-500"
@@ -403,10 +404,10 @@ export default function Sales() {
               <span className="text-xl">{totalQuantity}</span>
             </div>
             <div className="text-right">
-              <div className="text-gray-300 text-sm">Subtotal: ${subtotalAmount.toFixed(2)}</div>
+              <div className="text-gray-300 text-sm">Subtotal: {formatCurrency(toCents(subtotalAmount))}</div>
                                              {cartDiscount && (
                   <div className="text-green-400 text-sm flex items-center justify-end gap-2">
-                    <span>Cart Discount: -${cartDiscountAmount.toFixed(2)}
+                    <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
                       {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
                     </span>
                     <button
@@ -421,7 +422,7 @@ export default function Sales() {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-xl">Total</span>
-            <span className="text-2xl font-bold">${totalAmount.toFixed(2)}</span>
+            <span className="text-2xl font-bold">{formatCurrency(toCents(totalAmount))}</span>
           </div>
         </div>
         <div className="flex gap-4">
@@ -474,7 +475,7 @@ export default function Sales() {
               <div className="mb-3 p-2 bg-gray-50 rounded">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-black font-medium text-sm">Original Total</span>
-                  <span className="text-black font-bold">${totalAmount.toFixed(2)}</span>
+                  <span className="text-black font-bold">{formatCurrency(toCents(totalAmount))}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-black font-medium text-sm">Quantity</span>
@@ -488,7 +489,7 @@ export default function Sales() {
                     <div className="flex justify-between items-center">
                       <span className="text-black font-medium">Cash Payment Applied</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-green-700 font-bold">-${appliedCashPayment.toFixed(2)}</span>
+                        <span className="text-green-700 font-bold">-{formatCurrency(toCents(appliedCashPayment))}</span>
                         <button
                           className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
                           onClick={() => setAppliedCashPayment(0)}
@@ -509,7 +510,7 @@ export default function Sales() {
                     {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
                   </span>
                   <span className={`font-bold text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
-                    ${remainingBalance <= 0 ? '0.00' : remainingBalance.toFixed(2)}
+                    {remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance))}
                   </span>
                 </div>
                 <div className="h-12 mt-2">
@@ -596,7 +597,7 @@ export default function Sales() {
                         <div className="flex justify-between items-center">
                           <span className="text-black font-medium text-xs">Change</span>
                           <span className={`font-bold text-xs ${customerPayment >= remainingBalance ? 'text-green-600' : 'text-red-600'}`}>
-                            ${Math.max(0, customerPayment - remainingBalance).toFixed(2)}
+                            {formatCurrency(Math.max(0, toCents(customerPayment - remainingBalance)))}
                           </span>
                         </div>
                       ) : (
@@ -633,7 +634,7 @@ export default function Sales() {
                           }
                         }}
                       >
-                        ${amount.toFixed(2)}
+                        {formatCurrency(toCents(amount))}
                       </button>
                     ))}
                   </div>
@@ -853,7 +854,7 @@ export default function Sales() {
                           if (parseFloat(discountAmount) > lineTotal) {
                             return (
                               <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
-                                <strong>Warning:</strong> Discount amount (${parseFloat(discountAmount).toFixed(2)}) cannot exceed line total (${lineTotal.toFixed(2)})
+                                <strong>Warning:</strong> Discount amount ({formatCurrency(toCents(parseFloat(discountAmount)))}) cannot exceed line total ({formatCurrency(toCents(lineTotal))})
                               </div>
                             )
                           }
@@ -923,8 +924,8 @@ export default function Sales() {
                             <div className="text-sm opacity-75">SKU: {item.sku} | Qty: {item.quantity}</div>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold">${item.price.toFixed(2)}</div>
-                            <div className="text-sm">Total: ${(item.price * item.quantity).toFixed(2)}</div>
+                            <div className="font-bold">{formatCurrency(toCents(item.price))}</div>
+                            <div className="text-sm">Total: {formatCurrency(toCents(item.price * item.quantity))}</div>
                           </div>
                         </div>
                       </div>
@@ -949,9 +950,9 @@ export default function Sales() {
                             const actualDiscount = Math.min(discountValue, originalLineTotal)
                             return (
                               <div className="text-gray-100 text-sm">
-                                <div>Unit Price: ${selectedItem.price.toFixed(2)} (unchanged)</div>
-                                <div>Line Total: ${originalLineTotal.toFixed(2)} - ${actualDiscount.toFixed(2)} = <span className="text-amber-400">${newLineTotal.toFixed(2)}</span></div>
-                                <div className="text-green-400">Total Savings: ${actualDiscount.toFixed(2)}</div>
+                                <div>Unit Price: {formatCurrency(toCents(selectedItem.price))} (unchanged)</div>
+                                <div>Line Total: {formatCurrency(toCents(originalLineTotal))} - {formatCurrency(toCents(actualDiscount))} = <span className="text-amber-400">{formatCurrency(toCents(newLineTotal))}</span></div>
+                                <div className="text-green-400">Total Savings: {formatCurrency(toCents(actualDiscount))}</div>
                               </div>
                             )
                           } else {
@@ -959,9 +960,9 @@ export default function Sales() {
                             const totalSavings = originalLineTotal - newLineTotal
                             return (
                               <div className="text-gray-100 text-sm">
-                                <div>Unit Price: ${selectedItem.price.toFixed(2)} (unchanged)</div>
-                                <div>Line Total: ${originalLineTotal.toFixed(2)} - ${totalSavings.toFixed(2)} = <span className="text-amber-400">${newLineTotal.toFixed(2)}</span></div>
-                                <div className="text-green-400">Total Savings: ${totalSavings.toFixed(2)}</div>
+                                <div>Unit Price: {formatCurrency(toCents(selectedItem.price))} (unchanged)</div>
+                                <div>Line Total: {formatCurrency(toCents(originalLineTotal))} - {formatCurrency(toCents(totalSavings))} = <span className="text-amber-400">{formatCurrency(toCents(newLineTotal))}</span></div>
+                                <div className="text-green-400">Total Savings: {formatCurrency(toCents(totalSavings))}</div>
                               </div>
                             )
                           }
