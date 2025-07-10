@@ -6,6 +6,8 @@ import {
   calculateTax, 
   calculateTotal, 
   calculateChange,
+  calculateDiscountAmount,
+  toCents,
   generateId,
   fuzzySearch
 } from '@/utils';
@@ -22,22 +24,25 @@ interface POSStore extends POSState {
   removeFromCart: (itemId: string) => void;
   updateCartItemQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
-  applyDiscount: (amount: number) => void;
+  applyDiscount: (discountPercent: number) => void;
+  applyFixedDiscount: (discountAmountInDollars: number) => void;
   
   // Transaction actions
-  processTransaction: (paymentMethod: 'cash' | 'card', cashReceived?: number) => Transaction;
+  processTransaction: (paymentMethod: 'cash' | 'card', cashReceivedInDollars?: number) => Transaction;
   
   // Utility actions
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 }
 
+// NOTE: All monetary values in the Cart are stored in CENTS (integers)
+// This includes: subtotal, tax, discount, total, unitPrice, totalPrice
 const initialCart: Cart = {
   items: [],
-  subtotal: 0,
-  tax: 0,
-  discount: 0,
-  total: 0,
+  subtotal: 0, // in cents
+  tax: 0,      // in cents
+  discount: 0, // in cents
+  total: 0,    // in cents
 };
 
 export const usePOSStore = create<POSStore>()(
@@ -81,6 +86,9 @@ export const usePOSStore = create<POSStore>()(
       addToCart: (product: Product, quantity: number = 1) => {
         const { cart } = get();
         
+        // Convert product price to cents for internal calculations
+        const unitPriceInCents = toCents(product.price);
+        
         // Check if product already exists in cart
         const existingItemIndex = cart.items.findIndex(
           item => item.product.id === product.id
@@ -95,7 +103,7 @@ export const usePOSStore = create<POSStore>()(
               ? { 
                   ...item, 
                   quantity: item.quantity + quantity,
-                  totalPrice: (item.quantity + quantity) * item.unitPrice
+                  totalPrice: (item.quantity + quantity) * item.unitPrice // in cents
                 }
               : item
           );
@@ -105,24 +113,29 @@ export const usePOSStore = create<POSStore>()(
             id: generateId(),
             product,
             quantity,
-            unitPrice: product.price,
-            totalPrice: quantity * product.price,
+            unitPrice: unitPriceInCents,     // STORED IN CENTS
+            totalPrice: quantity * unitPriceInCents, // STORED IN CENTS
           };
           newItems = [...cart.items, newItem];
         }
 
-        // Recalculate totals
-        const subtotal = calculateSubtotal(newItems);
-        const tax = calculateTax(subtotal, mockSystemSettings.taxRate);
-        const total = calculateTotal(subtotal, tax, cart.discount);
+        // Recalculate totals (all in cents)
+        const subtotalInCents = calculateSubtotal(
+          newItems.map((item: CartItem) => ({ 
+            quantity: item.quantity, 
+            unitPriceInCents: item.unitPrice 
+          }))
+        );
+        const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
         set({
           cart: {
             ...cart,
             items: newItems,
-            subtotal,
-            tax,
-            total,
+            subtotal: subtotalInCents, // in cents
+            tax: taxInCents,          // in cents
+            total: totalInCents,      // in cents
           }
         });
       },
@@ -131,17 +144,22 @@ export const usePOSStore = create<POSStore>()(
         const { cart } = get();
         const newItems = cart.items.filter(item => item.id !== itemId);
         
-        const subtotal = calculateSubtotal(newItems);
-        const tax = calculateTax(subtotal, mockSystemSettings.taxRate);
-        const total = calculateTotal(subtotal, tax, cart.discount);
+        const subtotalInCents = calculateSubtotal(
+          newItems.map((item: CartItem) => ({ 
+            quantity: item.quantity, 
+            unitPriceInCents: item.unitPrice 
+          }))
+        );
+        const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
         set({
           cart: {
             ...cart,
             items: newItems,
-            subtotal,
-            tax,
-            total,
+            subtotal: subtotalInCents,
+            tax: taxInCents,
+            total: totalInCents,
           }
         });
       },
@@ -158,36 +176,60 @@ export const usePOSStore = create<POSStore>()(
             ? { 
                 ...item, 
                 quantity,
-                totalPrice: quantity * item.unitPrice
+                totalPrice: quantity * item.unitPrice // in cents
               }
             : item
         );
 
-        const subtotal = calculateSubtotal(newItems);
-        const tax = calculateTax(subtotal, mockSystemSettings.taxRate);
-        const total = calculateTotal(subtotal, tax, cart.discount);
+        const subtotalInCents = calculateSubtotal(
+          newItems.map((item: CartItem) => ({ 
+            quantity: item.quantity, 
+            unitPriceInCents: item.unitPrice 
+          }))
+        );
+        const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
         set({
           cart: {
             ...cart,
             items: newItems,
-            subtotal,
-            tax,
-            total,
+            subtotal: subtotalInCents,
+            tax: taxInCents,
+            total: totalInCents,
           }
         });
       },
 
-      applyDiscount: (amount: number) => {
+      applyDiscount: (discountPercent: number) => {
         const { cart } = get();
-        const discount = Math.max(0, Math.min(amount, cart.subtotal)); // Ensure discount doesn't exceed subtotal
-        const total = calculateTotal(cart.subtotal, cart.tax, discount);
+        // Calculate discount on subtotal (before tax)
+        const discountInCents = calculateDiscountAmount(cart.subtotal, discountPercent);
+        // Ensure discount doesn't exceed subtotal
+        const finalDiscountInCents = Math.min(discountInCents, cart.subtotal);
+        const totalInCents = calculateTotal(cart.subtotal, cart.tax, finalDiscountInCents);
 
         set({
           cart: {
             ...cart,
-            discount,
-            total,
+            discount: finalDiscountInCents, // in cents
+            total: totalInCents,           // in cents
+          }
+        });
+      },
+
+      applyFixedDiscount: (discountAmountInDollars: number) => {
+        const { cart } = get();
+        const discountInCents = toCents(discountAmountInDollars);
+        // Ensure discount doesn't exceed subtotal
+        const finalDiscountInCents = Math.max(0, Math.min(discountInCents, cart.subtotal));
+        const totalInCents = calculateTotal(cart.subtotal, cart.tax, finalDiscountInCents);
+
+        set({
+          cart: {
+            ...cart,
+            discount: finalDiscountInCents,
+            total: totalInCents,
           }
         });
       },
@@ -197,33 +239,35 @@ export const usePOSStore = create<POSStore>()(
       },
 
       // Transaction actions
-      processTransaction: (paymentMethod: 'cash' | 'card', cashReceived?: number) => {
+      processTransaction: (paymentMethod: 'cash' | 'card', cashReceivedInDollars?: number) => {
         const { cart } = get();
         
         if (cart.items.length === 0) {
           throw new Error('Cannot process empty cart');
         }
 
-        if (paymentMethod === 'cash' && (!cashReceived || cashReceived < cart.total)) {
+        const cashReceivedInCents = cashReceivedInDollars ? toCents(cashReceivedInDollars) : undefined;
+
+        if (paymentMethod === 'cash' && (!cashReceivedInCents || cashReceivedInCents < cart.total)) {
           throw new Error('Insufficient cash received');
         }
 
         const transaction: Transaction = {
           id: generateId(),
-          items: [...cart.items],
-          subtotal: cart.subtotal,
-          tax: cart.tax,
-          discount: cart.discount,
-          total: cart.total,
+          items: [...cart.items], // Items contain prices in cents
+          subtotal: cart.subtotal, // in cents
+          tax: cart.tax,          // in cents
+          discount: cart.discount, // in cents
+          total: cart.total,      // in cents
           paymentMethod,
           cashierId: '1', // Hard-coded for UI demo
           createdAt: new Date(),
           status: 'completed',
         };
 
-        if (paymentMethod === 'cash' && cashReceived) {
-          transaction.cashReceived = cashReceived;
-          transaction.changeGiven = calculateChange(cart.total, cashReceived);
+        if (paymentMethod === 'cash' && cashReceivedInCents) {
+          transaction.cashReceived = cashReceivedInCents;  // in cents
+          transaction.changeGiven = calculateChange(cart.total, cashReceivedInCents); // in cents
         }
 
         // Clear cart after successful transaction

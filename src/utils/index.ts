@@ -5,13 +5,117 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
-// Currency formatting
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+// =============================================================================
+// CURRENCY HANDLING - All financial calculations use CENTS (integers)
+// =============================================================================
+
+/**
+ * Converts a decimal dollar amount to cents (integer)
+ * @param amountInDollars - Dollar amount (e.g., 59.98, 5.00)
+ * @returns Integer representing cents (e.g., 5998, 500)
+ */
+export function toCents(amountInDollars: number): number {
+  // Use Math.round to handle floating-point precision issues
+  return Math.round(amountInDollars * 100);
+}
+
+/**
+ * Converts cents (integer) back to decimal dollar amount
+ * @param amountInCents - Integer amount in cents (e.g., 5998, 500)
+ * @returns Decimal dollar amount (e.g., 59.98, 5.00)
+ */
+export function fromCents(amountInCents: number): number {
+  return amountInCents / 100;
+}
+
+/**
+ * Formats cents as currency string with locale-aware formatting
+ * @param amountInCents - Integer amount in cents
+ * @param currency - Currency code (default: 'USD')
+ * @param locale - Locale for formatting (default: 'en-US')
+ * @returns Formatted currency string (e.g., "$59.98")
+ */
+export function formatCurrency(
+  amountInCents: number, 
+  currency: string = 'USD', 
+  locale: string = 'en-US'
+): string {
+  const dollarAmount = fromCents(amountInCents);
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency,
-  }).format(amount);
+  }).format(dollarAmount);
 }
+
+// =============================================================================
+// FINANCIAL CALCULATIONS - All calculations done with CENTS
+// =============================================================================
+
+/**
+ * Calculate tax on amount in cents
+ * @param amountInCents - Amount in cents
+ * @param taxRate - Tax rate as percentage (e.g., 8 for 8%)
+ * @returns Tax amount in cents (rounded to nearest cent)
+ */
+export function calculateTax(amountInCents: number, taxRate: number): number {
+  return Math.round(amountInCents * (taxRate / 100));
+}
+
+/**
+ * Calculate subtotal from cart items (all in cents)
+ * @param items - Array of items with quantity and unitPriceInCents
+ * @returns Subtotal in cents
+ */
+export function calculateSubtotal(items: Array<{ quantity: number; unitPriceInCents: number }>): number {
+  return items.reduce((sum, item) => sum + (item.quantity * item.unitPriceInCents), 0);
+}
+
+/**
+ * Calculate total from subtotal, tax, and discount (all in cents)
+ * @param subtotalInCents - Subtotal in cents
+ * @param taxInCents - Tax amount in cents
+ * @param discountInCents - Discount amount in cents (default: 0)
+ * @returns Total amount in cents
+ */
+export function calculateTotal(subtotalInCents: number, taxInCents: number, discountInCents: number = 0): number {
+  return subtotalInCents + taxInCents - discountInCents;
+}
+
+/**
+ * Calculate change from cash payment (all in cents)
+ * @param totalInCents - Total amount due in cents
+ * @param cashReceivedInCents - Cash received in cents
+ * @returns Change amount in cents
+ */
+export function calculateChange(totalInCents: number, cashReceivedInCents: number): number {
+  return cashReceivedInCents - totalInCents;
+}
+
+/**
+ * Calculate discount amount in cents
+ * @param amountInCents - Amount to apply discount to (in cents)
+ * @param discountPercent - Discount percentage (e.g., 10 for 10%)
+ * @returns Discount amount in cents (rounded to nearest cent)
+ */
+export function calculateDiscountAmount(amountInCents: number, discountPercent: number): number {
+  return Math.round(amountInCents * (discountPercent / 100));
+}
+
+// =============================================================================
+// LEGACY COMPATIBILITY - For gradual migration
+// =============================================================================
+
+/**
+ * @deprecated Use formatCurrency with toCents() instead
+ * Legacy currency formatting for decimal amounts
+ */
+export function formatCurrencyLegacy(amount: number, currency: string = 'USD'): string {
+  return formatCurrency(toCents(amount), currency);
+}
+
+// =============================================================================
+// OTHER UTILITIES (unchanged)
+// =============================================================================
 
 // Date formatting
 export function formatDate(date: Date | string): string {
@@ -40,24 +144,6 @@ export function formatTime(date: Date | string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d);
-}
-
-// Tax calculations
-export function calculateTax(amount: number, taxRate: number): number {
-  return Number((amount * (taxRate / 100)).toFixed(2));
-}
-
-export function calculateSubtotal(items: Array<{ quantity: number; unitPrice: number }>): number {
-  return Number(items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toFixed(2));
-}
-
-export function calculateTotal(subtotal: number, tax: number, discount: number = 0): number {
-  return Number((subtotal + tax - discount).toFixed(2));
-}
-
-// Change calculation
-export function calculateChange(total: number, cashReceived: number): number {
-  return Number((cashReceived - total).toFixed(2));
 }
 
 // String utilities
