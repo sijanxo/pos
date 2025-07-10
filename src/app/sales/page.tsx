@@ -340,7 +340,16 @@ export default function Sales() {
 
       {isCheckoutModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => {
+              // Click outside modal to return to cart
+              setCustomerPayment(0)
+              setCustomerPaymentInput('')
+              setAppliedCashPayment(0)
+              setIsCheckoutModalOpen(false)
+            }}
+          ></div>
           
           <div className="relative bg-white rounded-lg p-4 mx-4 w-full max-w-2xl h-[520px] border-2 border-blue-500 flex flex-col">
             <h2 className="text-xl font-bold mb-4 text-black">payment</h2>
@@ -552,14 +561,14 @@ export default function Sales() {
                     e.currentTarget.style.backgroundColor = '#2563eb'
                   }}
                   onClick={() => {
-                    // Return to cart - keep cart intact, just close modal and reset payment state
+                    // Confirm and return to cart - keep cart intact, just close modal and reset payment state
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
                     setIsCheckoutModalOpen(false)
                   }}
                 >
-                  return
+                  confirm
                 </button>
                 <button
                   className="flex-1 py-3 px-4 font-medium rounded text-sm transition-colors"
