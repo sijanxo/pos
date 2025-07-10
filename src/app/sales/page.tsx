@@ -325,7 +325,7 @@ export default function Sales() {
           </div>
         </div>
         <button 
-          className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+          className="w-1/2 ml-auto py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
           disabled={cartItems.length === 0}
           onClick={() => {
             setCustomerPayment(0)
