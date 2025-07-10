@@ -12,6 +12,17 @@ interface Product {
 
 interface CartItem extends Product {
   quantity: number
+  discount?: {
+    amount: number
+    type: 'flat' | 'percentage'
+    reason?: string
+  }
+}
+
+interface CartDiscount {
+  amount: number
+  type: 'flat' | 'percentage'
+  reason?: string
 }
 
 export default function Sales() {
@@ -20,6 +31,15 @@ export default function Sales() {
   const [customerPayment, setCustomerPayment] = useState(0)
   const [customerPaymentInput, setCustomerPaymentInput] = useState('')
   const [appliedCashPayment, setAppliedCashPayment] = useState(0)
+  
+  // Discount modal states
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false)
+  const [discountModalStep, setDiscountModalStep] = useState<'initial' | 'entireCart' | 'specificItem'>('initial')
+  const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<number | null>(null)
+  const [discountAmount, setDiscountAmount] = useState('')
+  const [discountType, setDiscountType] = useState<'flat' | 'percentage'>('flat')
+  const [discountReason, setDiscountReason] = useState('')
+  const [cartDiscount, setCartDiscount] = useState<CartDiscount | null>(null)
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -135,10 +155,28 @@ export default function Sales() {
     )
   }
 
-  const totalAmount = cartItems.reduce(
-    (sum: number, item: CartItem) => sum + item.price * item.quantity,
+  const subtotalAmount = cartItems.reduce(
+    (sum: number, item: CartItem) => {
+      const itemTotal = item.price * item.quantity
+      if (item.discount) {
+        if (item.discount.type === 'flat') {
+          return sum + Math.max(0, itemTotal - item.discount.amount)
+        } else {
+          return sum + itemTotal * (1 - item.discount.amount / 100)
+        }
+      }
+      return sum + itemTotal
+    },
     0,
   )
+  
+  const cartDiscountAmount = cartDiscount 
+    ? cartDiscount.type === 'flat' 
+      ? cartDiscount.amount 
+      : subtotalAmount * (cartDiscount.amount / 100)
+    : 0
+    
+  const totalAmount = Math.max(0, subtotalAmount - cartDiscountAmount)
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
@@ -292,11 +330,57 @@ export default function Sales() {
                       </button>
                     </div>
                     <span className="w-20">{item.sku}</span>
-                    <span className="flex-1">{item.name}</span>
+                    <div className="flex-1 flex items-center gap-2">
+                      <span>{item.name}</span>
+                      {item.discount && (
+                        <div className="flex items-center gap-1">
+                          <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
+                            {item.discount.type === 'flat' ? `$${item.discount.amount} off` : `${item.discount.amount}% off`}
+                          </span>
+                          <button
+                            className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                            onClick={() => {
+                              setCartItems(cartItems.map(cartItem => 
+                                cartItem.id === item.id 
+                                  ? { ...cartItem, discount: undefined }
+                                  : cartItem
+                              ))
+                            }}
+                            title="Remove discount"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="w-24 text-right">${item.price.toFixed(2)}</span>
-                    <span className="w-24 text-right font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                    <div className="w-24 text-right">
+                      <span className={item.discount ? 'line-through text-gray-500 text-sm' : ''}>${item.price.toFixed(2)}</span>
+                      {item.discount && (
+                        <div className="text-green-400 font-medium">
+                          ${item.discount.type === 'flat' 
+                            ? Math.max(0, item.price - item.discount.amount).toFixed(2)
+                            : (item.price * (1 - item.discount.amount / 100)).toFixed(2)
+                          }
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-24 text-right font-medium">
+                      {item.discount ? (
+                        <div>
+                          <span className="line-through text-gray-500 text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+                          <div className="text-green-400">
+                            ${item.discount.type === 'flat' 
+                              ? Math.max(0, (item.price * item.quantity) - item.discount.amount).toFixed(2)
+                              : ((item.price * item.quantity) * (1 - item.discount.amount / 100)).toFixed(2)
+                            }
+                          </div>
+                        </div>
+                      ) : (
+                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                      )}
+                    </div>
                     <button
                       className="p-1 rounded-md text-gray-400 hover:text-red-500"
                       onClick={() => removeFromCart(item.id)}
@@ -314,13 +398,31 @@ export default function Sales() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-gray-800 p-4 border-t border-gray-700 z-10">
-        <div className="flex justify-between items-center mb-3">
-          <div className="text-gray-300">
-            <span className="font-medium mr-2">Total Items:</span>
-            <span className="text-xl">{totalQuantity}</span>
+        <div className="mb-3">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-gray-300">
+              <span className="font-medium mr-2">Total Items:</span>
+              <span className="text-xl">{totalQuantity}</span>
+            </div>
+            <div className="text-right">
+              <div className="text-gray-300 text-sm">Subtotal: ${subtotalAmount.toFixed(2)}</div>
+                                             {cartDiscount && (
+                  <div className="text-green-400 text-sm flex items-center justify-end gap-2">
+                    <span>Cart Discount: -${cartDiscountAmount.toFixed(2)}
+                      {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
+                    </span>
+                    <button
+                      className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
+                      onClick={() => setCartDiscount(null)}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+            </div>
           </div>
-          <div className="flex items-center">
-            <span className="text-xl mr-2">Total</span>
+          <div className="flex justify-between items-center">
+            <span className="text-xl">Total</span>
             <span className="text-2xl font-bold">${totalAmount.toFixed(2)}</span>
           </div>
         </div>
@@ -329,8 +431,12 @@ export default function Sales() {
             className="w-1/2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             disabled={cartItems.length === 0}
             onClick={() => {
-              // TODO: Implement discount functionality
-              console.log('Apply discount clicked')
+              setDiscountModalStep('initial')
+              setDiscountAmount('')
+              setDiscountType('flat')
+              setDiscountReason('')
+              setSelectedItemForDiscount(null)
+              setIsDiscountModalOpen(true)
             }}
           >
             Apply Discount
@@ -607,6 +713,305 @@ export default function Sales() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discount Modal */}
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => {
+              setIsDiscountModalOpen(false)
+              setDiscountModalStep('initial')
+              setDiscountAmount('')
+              setDiscountType('flat')
+              setDiscountReason('')
+              setSelectedItemForDiscount(null)
+            }}
+          ></div>
+          
+          <div className="relative bg-gray-800 rounded-lg p-6 mx-4 w-full max-w-2xl border border-gray-700">
+            <h2 className="text-2xl font-bold mb-6 text-gray-100">Apply Discount</h2>
+
+            {/* Initial Step - Choose discount type */}
+            {discountModalStep === 'initial' && (
+              <div className="space-y-4">
+                <button
+                  className="w-full p-6 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 transition-colors"
+                  onClick={() => setDiscountModalStep('entireCart')}
+                >
+                  <div className="text-left">
+                    <div className="text-xl font-semibold text-gray-100 mb-2">Apply to Entire Cart</div>
+                    <div className="text-gray-400">Apply a discount to the total cart amount</div>
+                  </div>
+                </button>
+                
+                <button
+                  className="w-full p-6 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 transition-colors"
+                  onClick={() => setDiscountModalStep('specificItem')}
+                >
+                  <div className="text-left">
+                    <div className="text-xl font-semibold text-gray-100 mb-2">Apply to Specific Item</div>
+                    <div className="text-gray-400">Apply a discount to a single item in the cart</div>
+                  </div>
+                </button>
+                
+                <div className="flex justify-end mt-6">
+                  <button
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
+                    onClick={() => setIsDiscountModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Entire Cart Discount Step */}
+            {discountModalStep === 'entireCart' && (
+              <div className="space-y-4">
+                <button
+                  className="text-blue-400 hover:text-blue-300 mb-4"
+                  onClick={() => setDiscountModalStep('initial')}
+                >
+                  ← Back to options
+                </button>
+                
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Discount Amount
+                  </label>
+                  <input
+                    type="text"
+                    value={discountAmount}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+                        setDiscountAmount(value)
+                      }
+                    }}
+                    placeholder="0.00"
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Discount Type
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="discountType"
+                        value="flat"
+                        checked={discountType === 'flat'}
+                        onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
+                        className="mr-2 text-amber-500"
+                      />
+                      <span className="text-gray-300">$ (Flat Amount)</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="discountType"
+                        value="percentage"
+                        checked={discountType === 'percentage'}
+                        onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
+                        className="mr-2 text-amber-500"
+                      />
+                      <span className="text-gray-300">% (Percentage)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Reason/Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={discountReason}
+                    onChange={(e) => setDiscountReason(e.target.value)}
+                    placeholder="e.g., Employee discount, Promotion, etc."
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
+                    onClick={() => setIsDiscountModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    disabled={!discountAmount || parseFloat(discountAmount) <= 0}
+                    onClick={() => {
+                      const amount = parseFloat(discountAmount)
+                      setCartDiscount({
+                        amount,
+                        type: discountType,
+                        reason: discountReason || undefined
+                      })
+                      setIsDiscountModalOpen(false)
+                      setDiscountModalStep('initial')
+                      setDiscountAmount('')
+                      setDiscountType('flat')
+                      setDiscountReason('')
+                    }}
+                  >
+                    Apply Discount
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Specific Item Discount Step */}
+            {discountModalStep === 'specificItem' && (
+              <div className="space-y-4">
+                <button
+                  className="text-blue-400 hover:text-blue-300 mb-4"
+                  onClick={() => setDiscountModalStep('initial')}
+                >
+                  ← Back to options
+                </button>
+                
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Select Item
+                  </label>
+                  <div className="max-h-60 overflow-y-auto space-y-2 border border-gray-600 rounded-lg p-2">
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedItemForDiscount === item.id
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-100'
+                        }`}
+                        onClick={() => setSelectedItemForDiscount(item.id)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-sm opacity-75">SKU: {item.sku} | Qty: {item.quantity}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">${item.price.toFixed(2)}</div>
+                            <div className="text-sm">Total: ${(item.price * item.quantity).toFixed(2)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedItemForDiscount && (
+                  <>
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Discount Amount
+                      </label>
+                      <input
+                        type="text"
+                        value={discountAmount}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+                            setDiscountAmount(value)
+                          }
+                        }}
+                        placeholder="0.00"
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Discount Type
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            name="discountType"
+                            value="flat"
+                            checked={discountType === 'flat'}
+                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
+                            className="mr-2 text-amber-500"
+                          />
+                          <span className="text-gray-300">$ (Flat Amount)</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            name="discountType"
+                            value="percentage"
+                            checked={discountType === 'percentage'}
+                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
+                            className="mr-2 text-amber-500"
+                          />
+                          <span className="text-gray-300">% (Percentage)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        Reason/Note (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={discountReason}
+                        onChange={(e) => setDiscountReason(e.target.value)}
+                        placeholder="e.g., Employee discount, Promotion, etc."
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
+                    onClick={() => setIsDiscountModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    disabled={!selectedItemForDiscount || !discountAmount || parseFloat(discountAmount) <= 0}
+                    onClick={() => {
+                      const amount = parseFloat(discountAmount)
+                      setCartItems(cartItems.map(item => 
+                        item.id === selectedItemForDiscount
+                          ? {
+                              ...item,
+                              discount: {
+                                amount,
+                                type: discountType,
+                                reason: discountReason || undefined
+                              }
+                            }
+                          : item
+                      ))
+                      setIsDiscountModalOpen(false)
+                      setDiscountModalStep('initial')
+                      setDiscountAmount('')
+                      setDiscountType('flat')
+                      setDiscountReason('')
+                      setSelectedItemForDiscount(null)
+                    }}
+                  >
+                    Apply Discount
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
