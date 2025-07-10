@@ -335,7 +335,7 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' ? `$${item.discount.amount} off line total` : `${item.discount.amount}% off`}
+                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off each`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -356,13 +356,10 @@ export default function Sales() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="w-24 text-right">
-                      <span className={item.discount ? 'line-through text-gray-500 text-sm' : ''}>${item.price.toFixed(2)}</span>
-                      {item.discount && (
-                        <div className="text-green-400 font-medium">
-                          ${item.discount.type === 'flat' 
-                            ? (Math.max(0, (item.price * item.quantity) - item.discount.amount) / item.quantity).toFixed(2)
-                            : (item.price * (1 - item.discount.amount / 100)).toFixed(2)
-                          }
+                      <span className="text-gray-100">${item.price.toFixed(2)}</span>
+                      {item.discount && item.discount.type === 'percentage' && (
+                        <div className="text-green-400 font-medium text-sm">
+                          ${(item.price * (1 - item.discount.amount / 100)).toFixed(2)}
                         </div>
                       )}
                     </div>
@@ -376,6 +373,11 @@ export default function Sales() {
                               : ((item.price * item.quantity) * (1 - item.discount.amount / 100)).toFixed(2)
                             }
                           </div>
+                          {item.discount.type === 'flat' && (
+                            <div className="text-xs text-green-300">
+                              (-${Math.min(item.discount.amount, item.price * item.quantity).toFixed(2)})
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span>${(item.price * item.quantity).toFixed(2)}</span>
@@ -813,7 +815,7 @@ export default function Sales() {
                       />
                       <div className="text-left">
                         <span className="text-gray-300">$ (Flat Amount)</span>
-                        <div className="text-xs text-gray-500">Applied to total line item</div>
+                        <div className="text-xs text-gray-500">Deducted from line total</div>
                       </div>
                     </label>
                     <label className="flex items-center cursor-pointer">
@@ -827,7 +829,7 @@ export default function Sales() {
                       />
                       <div className="text-left">
                         <span className="text-gray-300">% (Percentage)</span>
-                        <div className="text-xs text-gray-500">Applied per unit</div>
+                        <div className="text-xs text-gray-500">Discount per unit price</div>
                       </div>
                     </label>
                   </div>
@@ -855,7 +857,7 @@ export default function Sales() {
                           if (parseFloat(discountAmount) > lineTotal) {
                             return (
                               <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
-                                <strong>Warning:</strong> Flat discount (${parseFloat(discountAmount).toFixed(2)}) cannot exceed line total (${lineTotal.toFixed(2)})
+                                <strong>Warning:</strong> Discount amount (${parseFloat(discountAmount).toFixed(2)}) cannot exceed line total (${lineTotal.toFixed(2)})
                               </div>
                             )
                           }
@@ -948,12 +950,12 @@ export default function Sales() {
                           
                           if (discountType === 'flat') {
                             const newLineTotal = Math.max(0, originalLineTotal - discountValue)
-                            const newUnitPrice = newLineTotal / selectedItem.quantity
+                            const actualDiscount = Math.min(discountValue, originalLineTotal)
                             return (
                               <div className="text-gray-100 text-sm">
-                                <div>Original: ${selectedItem.price.toFixed(2)} × {selectedItem.quantity} = ${originalLineTotal.toFixed(2)}</div>
-                                <div className="text-amber-400">After discount: ${newUnitPrice.toFixed(2)} × {selectedItem.quantity} = ${newLineTotal.toFixed(2)}</div>
-                                <div className="text-green-400">Savings: ${Math.min(discountValue, originalLineTotal).toFixed(2)}</div>
+                                <div>Unit Price: ${selectedItem.price.toFixed(2)} (unchanged)</div>
+                                <div>Line Total: ${originalLineTotal.toFixed(2)} - ${actualDiscount.toFixed(2)} = <span className="text-amber-400">${newLineTotal.toFixed(2)}</span></div>
+                                <div className="text-green-400">Total Savings: ${actualDiscount.toFixed(2)}</div>
                               </div>
                             )
                           } else {
@@ -1003,7 +1005,10 @@ export default function Sales() {
                             onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
                             className="mr-2 text-amber-500"
                           />
-                          <span className="text-gray-300">$ (Flat Amount)</span>
+                          <div className="text-left">
+                            <span className="text-gray-300">$ (Flat Amount)</span>
+                            <div className="text-xs text-gray-500">Deducted from line total</div>
+                          </div>
                         </label>
                         <label className="flex items-center cursor-pointer">
                           <input
@@ -1014,7 +1019,10 @@ export default function Sales() {
                             onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
                             className="mr-2 text-amber-500"
                           />
-                          <span className="text-gray-300">% (Percentage)</span>
+                          <div className="text-left">
+                            <span className="text-gray-300">% (Percentage)</span>
+                            <div className="text-xs text-gray-500">Discount per unit price</div>
+                          </div>
                         </label>
                       </div>
                     </div>
