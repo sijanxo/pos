@@ -561,14 +561,14 @@ export default function Sales() {
                     e.currentTarget.style.backgroundColor = '#2563eb'
                   }}
                   onClick={() => {
-                    // Return to cart - keep cart intact, just close modal and reset payment state
+                    // Confirm and return to cart - keep cart intact, just close modal and reset payment state
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
                     setIsCheckoutModalOpen(false)
                   }}
                 >
-                  return
+                  confirm
                 </button>
                 <button
                   className="flex-1 py-3 px-4 font-medium rounded text-sm transition-colors"
