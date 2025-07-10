@@ -324,18 +324,20 @@ export default function Sales() {
             <span className="text-2xl font-bold">${totalAmount.toFixed(2)}</span>
           </div>
         </div>
-        <button 
-          className="w-1/2 ml-auto py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-          disabled={cartItems.length === 0}
-          onClick={() => {
-            setCustomerPayment(0)
-            setCustomerPaymentInput('')
-            setAppliedCashPayment(0)
-            setIsCheckoutModalOpen(true)
-          }}
-        >
-          Pay
-        </button>
+        <div className="flex justify-end">
+          <button 
+            className="w-1/2 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+            disabled={cartItems.length === 0}
+            onClick={() => {
+              setCustomerPayment(0)
+              setCustomerPaymentInput('')
+              setAppliedCashPayment(0)
+              setIsCheckoutModalOpen(true)
+            }}
+          >
+            Pay
+          </button>
+        </div>
       </div>
 
       {isCheckoutModalOpen && (
