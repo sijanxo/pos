@@ -119,6 +119,7 @@ function CartItemCard({
             {item.product.brand}
           </p>
           <p className="product-price text-sm text-muted">
+            {/* unitPrice is stored in cents, so we use formatCurrency directly */}
             {formatCurrency(item.unitPrice)} each
           </p>
         </div>
@@ -152,6 +153,7 @@ function CartItemCard({
         {/* Item Total */}
         <div className="item-total text-right min-w-0">
           <p className="font-semibold text-text">
+            {/* totalPrice is stored in cents, so we use formatCurrency directly */}
             {formatCurrency(item.totalPrice)}
           </p>
           <button
@@ -176,6 +178,7 @@ function CartTotals({ cart }: CartTotalsProps) {
       {/* Subtotal */}
       <div className="flex justify-between text-sm">
         <span className="text-muted">Subtotal:</span>
+        {/* All cart values are stored in cents */}
         <span className="font-medium">{formatCurrency(cart.subtotal)}</span>
       </div>
 

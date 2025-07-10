@@ -5,7 +5,7 @@ import { Search, Scan, Package } from 'lucide-react';
 import { Input, Card, CardContent } from '@/components/shared';
 import { usePOSStore } from '@/stores/posStore';
 import { Product } from '@/types';
-import { formatCurrency, debounce } from '@/utils';
+import { formatCurrency, toCents, debounce } from '@/utils';
 
 export function ProductSearch() {
   const {
@@ -181,7 +181,8 @@ function ProductCard({ product, isSelected, onSelect, onAddToCart }: ProductCard
             
             <div className="product-price-actions text-right flex-shrink-0 ml-2">
               <p className="product-price text-lg font-semibold text-text">
-                {formatCurrency(product.price)}
+                {/* Convert product price (dollars) to cents for display */}
+                {formatCurrency(toCents(product.price))}
               </p>
               <p className="product-stock text-xs text-muted">
                 Stock: {product.stockQuantity}

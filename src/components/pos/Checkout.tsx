@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { CreditCard, DollarSign, Receipt, Check } from 'lucide-react';
 import { Button, Card, CardHeader, CardContent, Input } from '@/components/shared';
 import { usePOSStore } from '@/stores/posStore';
-import { formatCurrency, calculateChange } from '@/utils';
+import { formatCurrency, toCents, fromCents } from '@/utils';
 
 interface CheckoutProps {
   onTransactionComplete?: () => void;
@@ -20,12 +20,14 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
 
   const isEmpty = cart.items.length === 0;
   const cashAmount = parseFloat(cashReceived) || 0;
-  const change = paymentMethod === 'cash' ? calculateChange(cart.total, cashAmount) : 0;
-  const isValidCashPayment = paymentMethod !== 'cash' || cashAmount >= cart.total;
+  const cashAmountInCents = cashAmount > 0 ? toCents(cashAmount) : 0;
+  const changeInCents = paymentMethod === 'cash' && cashAmountInCents > cart.total ? 
+    cashAmountInCents - cart.total : 0;
+  const isValidCashPayment = paymentMethod !== 'cash' || cashAmountInCents >= cart.total;
 
-  const handleQuickCash = (amount: number) => {
+  const handleQuickCash = (amountInCents: number) => {
     if (paymentMethod === 'cash') {
-      setCashReceived(amount.toString());
+      setCashReceived(fromCents(amountInCents).toFixed(2));
     }
   };
 
@@ -54,11 +56,12 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
     }
   };
 
-  const quickCashAmounts = [
+  // Generate quick cash amounts based on total (all in cents)
+  const quickCashAmountsInCents = [
     cart.total,
-    Math.ceil(cart.total / 5) * 5, // Round up to nearest $5
-    Math.ceil(cart.total / 10) * 10, // Round up to nearest $10
-    Math.ceil(cart.total / 20) * 20, // Round up to nearest $20
+    Math.ceil(fromCents(cart.total) / 5) * 500,  // Round up to nearest $5 (in cents)
+    Math.ceil(fromCents(cart.total) / 10) * 1000, // Round up to nearest $10 (in cents)
+    Math.ceil(fromCents(cart.total) / 20) * 2000, // Round up to nearest $20 (in cents)
   ].filter((amount, index, arr) => arr.indexOf(amount) === index); // Remove duplicates
 
   if (showReceipt && lastTransaction) {
@@ -97,6 +100,7 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
+                    {/* All cart values are in cents */}
                     <span>{formatCurrency(cart.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -155,14 +159,14 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
                   <div className="quick-cash mb-4">
                     <p className="text-sm text-muted mb-2">Quick amounts:</p>
                     <div className="grid grid-cols-2 gap-2">
-                      {quickCashAmounts.slice(0, 4).map((amount) => (
+                      {quickCashAmountsInCents.slice(0, 4).map((amountInCents) => (
                         <Button
-                          key={amount}
+                          key={amountInCents}
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleQuickCash(amount)}
+                          onClick={() => handleQuickCash(amountInCents)}
                         >
-                          {formatCurrency(amount)}
+                          {formatCurrency(amountInCents)}
                         </Button>
                       ))}
                     </div>
@@ -181,14 +185,14 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
                   />
 
                   {/* Change Calculation */}
-                  {cashAmount > 0 && (
+                  {cashAmountInCents > 0 && (
                     <div className="change-info mt-3 p-3 bg-gray-50 rounded">
-                      {cashAmount >= cart.total ? (
+                      {cashAmountInCents >= cart.total ? (
                         <div className="change-display">
                           <div className="flex justify-between text-lg font-semibold">
                             <span>Change:</span>
                             <span className="text-success">
-                              {formatCurrency(change)}
+                              {formatCurrency(changeInCents)}
                             </span>
                           </div>
                         </div>
@@ -196,7 +200,7 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
                         <div className="insufficient-cash text-error">
                           <p>Insufficient cash received</p>
                           <p className="text-sm">
-                            Need {formatCurrency(cart.total - cashAmount)} more
+                            Need {formatCurrency(cart.total - cashAmountInCents)} more
                           </p>
                         </div>
                       )}
@@ -280,6 +284,7 @@ function ReceiptView({ transaction, onClose }: ReceiptViewProps) {
                   <div className="flex-1">
                     <div>{item.product.name}</div>
                     <div className="text-muted">
+                      {/* item.unitPrice and item.totalPrice are in cents */}
                       {item.quantity} x {formatCurrency(item.unitPrice)}
                     </div>
                   </div>
@@ -291,6 +296,7 @@ function ReceiptView({ transaction, onClose }: ReceiptViewProps) {
             <div className="receipt-totals border-t pt-2 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
+                {/* All transaction values are in cents */}
                 <span>{formatCurrency(transaction.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -317,10 +323,12 @@ function ReceiptView({ transaction, onClose }: ReceiptViewProps) {
                   <>
                     <div className="flex justify-between text-sm">
                       <span>Cash Received:</span>
+                      {/* cashReceived is in cents */}
                       <span>{formatCurrency(transaction.cashReceived)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Change:</span>
+                      {/* changeGiven is in cents */}
                       <span>{formatCurrency(transaction.changeGiven || 0)}</span>
                     </div>
                   </>
