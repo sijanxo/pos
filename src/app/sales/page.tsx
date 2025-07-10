@@ -335,7 +335,7 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off each`}
+                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -357,11 +357,6 @@ export default function Sales() {
                   <div className="flex items-center gap-4">
                     <div className="w-24 text-right">
                       <span className="text-gray-100">${item.price.toFixed(2)}</span>
-                      {item.discount && item.discount.type === 'percentage' && (
-                        <div className="text-green-400 font-medium text-sm">
-                          ${(item.price * (1 - item.discount.amount / 100)).toFixed(2)}
-                        </div>
-                      )}
                     </div>
                     <div className="w-24 text-right font-medium">
                       {item.discount ? (
@@ -373,11 +368,12 @@ export default function Sales() {
                               : ((item.price * item.quantity) * (1 - item.discount.amount / 100)).toFixed(2)
                             }
                           </div>
-                          {item.discount.type === 'flat' && (
-                            <div className="text-xs text-green-300">
-                              (-${Math.min(item.discount.amount, item.price * item.quantity).toFixed(2)})
-                            </div>
-                          )}
+                          <div className="text-xs text-green-300">
+                            {item.discount.type === 'flat' 
+                              ? `(-$${Math.min(item.discount.amount, item.price * item.quantity).toFixed(2)})`
+                              : `(-$${((item.price * item.quantity) - ((item.price * item.quantity) * (1 - item.discount.amount / 100))).toFixed(2)})`
+                            }
+                          </div>
                         </div>
                       ) : (
                         <span>${(item.price * item.quantity).toFixed(2)}</span>
@@ -829,7 +825,7 @@ export default function Sales() {
                       />
                       <div className="text-left">
                         <span className="text-gray-300">% (Percentage)</span>
-                        <div className="text-xs text-gray-500">Discount per unit price</div>
+                        <div className="text-xs text-gray-500">Percent off cart total</div>
                       </div>
                     </label>
                   </div>
@@ -959,13 +955,13 @@ export default function Sales() {
                               </div>
                             )
                           } else {
-                            const newUnitPrice = selectedItem.price * (1 - discountValue / 100)
-                            const newLineTotal = newUnitPrice * selectedItem.quantity
+                            const newLineTotal = originalLineTotal * (1 - discountValue / 100)
+                            const totalSavings = originalLineTotal - newLineTotal
                             return (
                               <div className="text-gray-100 text-sm">
-                                <div>Original: ${selectedItem.price.toFixed(2)} × {selectedItem.quantity} = ${originalLineTotal.toFixed(2)}</div>
-                                <div className="text-amber-400">After discount: ${newUnitPrice.toFixed(2)} × {selectedItem.quantity} = ${newLineTotal.toFixed(2)}</div>
-                                <div className="text-green-400">Savings: ${(originalLineTotal - newLineTotal).toFixed(2)}</div>
+                                <div>Unit Price: ${selectedItem.price.toFixed(2)} (unchanged)</div>
+                                <div>Line Total: ${originalLineTotal.toFixed(2)} - ${totalSavings.toFixed(2)} = <span className="text-amber-400">${newLineTotal.toFixed(2)}</span></div>
+                                <div className="text-green-400">Total Savings: ${totalSavings.toFixed(2)}</div>
                               </div>
                             )
                           }
@@ -1021,7 +1017,7 @@ export default function Sales() {
                           />
                           <div className="text-left">
                             <span className="text-gray-300">% (Percentage)</span>
-                            <div className="text-xs text-gray-500">Discount per unit price</div>
+                            <div className="text-xs text-gray-500">Percent off line total</div>
                           </div>
                         </label>
                       </div>
