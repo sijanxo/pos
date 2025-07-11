@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { CreditCard, DollarSign, Receipt, Check } from 'lucide-react';
 import { Button, Card, CardHeader, CardContent, Input } from '@/components/shared';
 import { usePOSStore } from '@/stores/posStore';
-import { useAddSale } from '@/stores/salesStore';
+import { useAddSale, SaleData } from '@/stores/salesStore';
 import { formatCurrency, toCents, fromCents } from '@/utils';
 import { CartItem } from '@/types';
+import { ReceiptDisplay } from '@/components/ReceiptDisplay';
 
 interface CheckoutProps {
   onTransactionComplete?: () => void;
@@ -19,7 +20,7 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
   const [cashReceived, setCashReceived] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [lastSaleData, setLastSaleData] = useState<SaleData | null>(null);
 
   const isEmpty = cart.items.length === 0;
   const cashAmount = parseFloat(cashReceived) || 0;
@@ -84,7 +85,7 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
       addSale(saleData);
       // ========== END SALE RECORDING LOGIC ==========
       
-      setLastTransaction(transaction);
+      setLastSaleData(saleData);
       setShowReceipt(true);
       setCashReceived('');
       
@@ -104,13 +105,13 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
     Math.ceil(fromCents(cart.total) / 20) * 2000, // Round up to nearest $20 (in cents)
   ].filter((amount, index, arr) => arr.indexOf(amount) === index); // Remove duplicates
 
-  if (showReceipt && lastTransaction) {
+  if (showReceipt && lastSaleData) {
     return (
-      <ReceiptView
-        transaction={lastTransaction}
+      <ReceiptDisplayModal
+        saleData={lastSaleData}
         onClose={() => {
           setShowReceipt(false);
-          setLastTransaction(null);
+          setLastSaleData(null);
         }}
       />
     );
