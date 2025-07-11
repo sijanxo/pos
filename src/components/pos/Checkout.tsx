@@ -274,12 +274,12 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
   );
 }
 
-interface ReceiptViewProps {
-  transaction: any; // Use the Transaction type from your types
+interface ReceiptDisplayModalProps {
+  saleData: SaleData;
   onClose: () => void;
 }
 
-function ReceiptView({ transaction, onClose }: ReceiptViewProps) {
+function ReceiptDisplayModal({ saleData, onClose }: ReceiptDisplayModalProps) {
   const handlePrint = () => {
     window.print();
   };
@@ -305,82 +305,13 @@ function ReceiptView({ transaction, onClose }: ReceiptViewProps) {
               Payment Successful!
             </h2>
             <p className="text-muted">
-              Transaction ID: {transaction.id}
+              Sale ID: {saleData.id}
             </p>
           </div>
 
-          {/* Receipt */}
-          <div className="receipt bg-white border p-6 rounded-lg mb-4 receipt">
-            <div className="receipt-header text-center mb-4">
-              <h3 className="text-lg font-bold">Premium Liquor Store</h3>
-              <p className="text-sm text-muted">123 Main Street, Anytown, USA</p>
-              <p className="text-sm text-muted">
-                {new Date(transaction.createdAt).toLocaleString()}
-              </p>
-            </div>
-
-            <div className="receipt-items mb-4">
-              {transaction.items.map((item: any, index: number) => (
-                <div key={index} className="receipt-item flex justify-between text-sm mb-1">
-                  <div className="flex-1">
-                    <div>{item.product.name}</div>
-                    <div className="text-muted">
-                      {/* item.unitPrice and item.totalPrice are in cents */}
-                      {item.quantity} x {formatCurrency(item.unitPrice)}
-                    </div>
-                  </div>
-                  <div>{formatCurrency(item.totalPrice)}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="receipt-totals border-t pt-2 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                {/* All transaction values are in cents */}
-                <span>{formatCurrency(transaction.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tax:</span>
-                <span>{formatCurrency(transaction.tax)}</span>
-              </div>
-              {transaction.discount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Discount:</span>
-                  <span>-{formatCurrency(transaction.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold border-t pt-1">
-                <span>Total:</span>
-                <span>{formatCurrency(transaction.total)}</span>
-              </div>
-              
-              <div className="payment-info mt-2 pt-2 border-t">
-                <div className="flex justify-between text-sm">
-                  <span>Payment Method:</span>
-                  <span className="capitalize">{transaction.paymentMethod}</span>
-                </div>
-                {transaction.cashReceived && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span>Cash Received:</span>
-                      {/* cashReceived is in cents */}
-                      <span>{formatCurrency(transaction.cashReceived)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Change:</span>
-                      {/* changeGiven is in cents */}
-                      <span>{formatCurrency(transaction.changeGiven || 0)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="receipt-footer text-center mt-4 text-xs text-muted">
-              <p>Thank you for your business!</p>
-              <p>Please drink responsibly.</p>
-            </div>
+          {/* Receipt Display Component */}
+          <div className="receipt-wrapper flex-1 overflow-y-auto mb-4">
+            <ReceiptDisplay saleData={saleData} />
           </div>
 
           {/* Actions */}
