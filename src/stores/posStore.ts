@@ -42,6 +42,7 @@ const initialCart: Cart = {
   subtotal: 0, // in cents
   tax: 0,      // in cents
   discount: 0, // in cents
+  discountPercentage: undefined, // percentage for display
   total: 0,    // in cents
 };
 
@@ -213,6 +214,7 @@ export const usePOSStore = create<POSStore>()(
           cart: {
             ...cart,
             discount: finalDiscountInCents, // in cents
+            discountPercentage: discountPercent, // store percentage for display
             total: totalInCents,           // in cents
           }
         });
@@ -229,6 +231,7 @@ export const usePOSStore = create<POSStore>()(
           cart: {
             ...cart,
             discount: finalDiscountInCents,
+            discountPercentage: undefined, // no percentage for fixed discount
             total: totalInCents,
           }
         });
@@ -258,6 +261,7 @@ export const usePOSStore = create<POSStore>()(
           subtotal: cart.subtotal, // in cents
           tax: cart.tax,          // in cents
           discount: cart.discount, // in cents
+          discountPercentage: cart.discountPercentage, // store percentage for historical records
           total: cart.total,      // in cents
           paymentMethod,
           cashierId: '1', // Hard-coded for UI demo

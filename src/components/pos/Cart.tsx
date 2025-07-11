@@ -193,7 +193,10 @@ function CartTotals({ cart }: CartTotalsProps) {
         <div className="flex justify-between text-sm">
           <span className="text-muted">Discount:</span>
           <span className="font-medium text-success">
-            -{formatCurrency(cart.discount)}
+            {cart.discountPercentage !== undefined 
+              ? `${cart.discountPercentage}% off`
+              : `-${formatCurrency(cart.discount)}`
+            }
           </span>
         </div>
       )}

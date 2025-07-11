@@ -55,6 +55,7 @@ export interface Cart {
   subtotal: number;
   tax: number;
   discount: number;
+  discountPercentage?: number; // Store the percentage for display
   total: number;
 }
 
@@ -64,6 +65,7 @@ export interface Transaction {
   subtotal: number;
   tax: number;
   discount: number;
+  discountPercentage?: number; // Store percentage for historical records
   total: number;
   paymentMethod: 'cash' | 'card' | 'split';
   cashReceived?: number;
