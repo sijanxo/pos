@@ -89,7 +89,15 @@ export const usePOSStore = create<POSStore>()(
       // Helper function to recalculate discount amount when subtotal changes (for percentage-based discounts)
       recalculateDiscountAmount: (cart: Cart, newSubtotal: number) => {
         // If there was a percentage-based discount applied, maintain the percentage and recalculate the amount
-        if (cart.discountPercentage !== undefined && newSubtotal > 0) {
+        if (cart.discountPercentage !== undefined) {
+          // When subtotal is 0, discount amount should also be 0, but keep the percentage
+          if (newSubtotal === 0) {
+            return { 
+              discount: 0, 
+              discountPercentage: cart.discountPercentage // Keep original percentage for when cart is refilled
+            };
+          }
+          
           const newDiscountAmount = calculateDiscountAmount(newSubtotal, cart.discountPercentage);
           // Ensure discount doesn't exceed subtotal
           const finalDiscountAmount = Math.min(newDiscountAmount, newSubtotal);
