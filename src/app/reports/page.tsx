@@ -15,7 +15,7 @@ export default function Reports() {
       {
         id: generateId(),
         saleDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-        totalAmount: 8999, // $89.99 in cents
+        totalAmount: 9297, // $92.97 in cents (items: $84.98 + tax: $7.99)
         taxAmount: 799, // $7.99 in cents
         discountAmount: 0,
         paymentMethod: 'card' as const,
@@ -47,7 +47,7 @@ export default function Reports() {
       {
         id: generateId(),
         saleDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        totalAmount: 4599, // $45.99 in cents
+        totalAmount: 5795, // $57.95 in cents (items: $58.96 + tax: $3.99 - discount: $5.00)
         taxAmount: 399, // $3.99 in cents
         discountAmount: 500, // $5.00 discount
         paymentMethod: 'cash' as const,
@@ -79,7 +79,7 @@ export default function Reports() {
       {
         id: generateId(),
         saleDate: new Date().toISOString(), // Today
-        totalAmount: 12999, // $129.99 in cents
+        totalAmount: 13097, // $130.97 in cents (items: $119.98 + tax: $10.99)
         taxAmount: 1099, // $10.99 in cents
         discountAmount: 0,
         paymentMethod: 'card' as const,
