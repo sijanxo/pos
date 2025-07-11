@@ -174,18 +174,36 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
-  // Transaction completion logic
-  const canCompleteTransaction = 
-    cartItems.length > 0 && (
-      (selectedPaymentMethod === 'cash' && remainingBalance <= 0) ||
-      (selectedPaymentMethod === 'card')
-    );
+  // Transaction completion logic - explicit handling for each payment method
+  const canCompleteTransaction = (() => {
+    if (cartItems.length === 0) return false;
+    if (!selectedPaymentMethod) return false;
+    
+    // For cash payments, require sufficient payment to cover the total
+    if (selectedPaymentMethod === 'cash') {
+      return remainingBalance <= 0;
+    }
+    
+    // For card payments, no balance validation needed - external terminal handles payment
+    if (selectedPaymentMethod === 'card') {
+      return true;
+    }
+    
+    return false;
+  })();
 
   // Enhanced complete sale function with sales recording
   const handleCompleteSale = () => {
     // Use the new completion logic
     if (!canCompleteTransaction) {
       console.warn("Transaction cannot be completed based on current payment state.");
+      return;
+    }
+
+    // Ensure we have a valid payment method
+    if (!selectedPaymentMethod) {
+      console.error("No payment method selected");
+      alert('Please select a payment method before completing the transaction.');
       return;
     }
 
@@ -200,8 +218,8 @@ export default function Sales() {
       const totalInCents = toCents(totalAmount);
       const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
       
-      // Use the selected payment method instead of inferring it
-      const paymentMethod = selectedPaymentMethod!;
+      // Use the selected payment method explicitly to prevent misclassification
+      const paymentMethod = selectedPaymentMethod;
       
       // Construct comprehensive saleData object
       const saleData: SaleData = {
