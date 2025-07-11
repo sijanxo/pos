@@ -1,13 +1,26 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Plus, Minus, Trash2Icon, Check, Receipt } from 'lucide-react'
-import { toCents, fromCents, formatCurrency, calculateDiscountAmount, calculateTax, generateId } from '@/utils'
 
+import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
+
+// Constants for configuration
+const STORE_CONFIG = {
+  name: 'Premium Liquor Store',
+  address: '123 Main Street, Anytown, USA',
+  phone: '(555) 123-4567',
+  defaultCashierId: 'CASHIER-001',
+  defaultTaxRate: 8.5, // 8.5%
+  defaultMarkupPercentage: 40, // 40% markup (60% cost ratio)
+} as const
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId, calculateTax } from '@/utils'
 import { useCartStore, CartItem } from '@/stores/cartStore'
-import { useAddSale, SaleData } from '@/stores/salesStore'
-import { ReceiptDisplay } from '@/components/ReceiptDisplay'
 import { Product } from '@/types'
+import { useSalesStore, SaleData } from '@/stores/salesStore'
+import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
+import { CartItemRow } from '@/components/sales/CartItemRow'
+import { SearchResults } from '@/components/sales/SearchResults'
+import { printReceipt } from '@/utils/receiptPrinter'
 
 
 export default function Sales() {
@@ -46,17 +59,30 @@ export default function Sales() {
     completeSale,
     cancelSale,
   } = useCartStore();
-  
-  // Add sales store hook
-  const addSale = useAddSale();
-  
-  // Add state for receipt display
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [lastSaleData, setLastSaleData] = useState<SaleData | null>(null);
-  
-  // Add payment method selection state
+
+
+  // Sales store for saving completed sales
+  const { addSale } = useSalesStore();
+
+  // State for PaymentConfirmedModal
+  const [showPaymentConfirmedModal, setShowPaymentConfirmedModal] = useState<boolean>(false);
+  const [confirmedSaleData, setConfirmedSaleData] = useState<SaleData | null>(null);
+
+  // Missing state variables that were being used but not declared
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
-  const [searchResults, setSearchResults] = useState<Product[]>([
+
+
+
+  // Handle print receipt - delegate to utility function
+  const handlePrintReceipt = printReceipt;
+
+
+  // TODO: Replace with actual product search/fetch functionality
+  // This is mock data for development purposes
+  const [searchResults, setSearchResults] = useState<Product[]>([])
+  
+  // Mock products for demonstration - should be replaced with real product fetching
+  const mockProducts: Product[] = [
     {
       id: '1',
       sku: 'WN-001',
@@ -117,9 +143,24 @@ export default function Sales() {
       createdAt: new Date(),
       updatedAt: new Date(),
     },
-  ])
+  ]
+
+  // Effect to filter products based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    const filtered = mockProducts.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
+  }, [searchQuery])
   const [activeItem, setActiveItem] = useState(0)
-  const [editingQuantity, setEditingQuantity] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -174,12 +215,23 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
-  // Transaction completion logic
-  const canCompleteTransaction = 
-    cartItems.length > 0 && (
-      (selectedPaymentMethod === 'cash' && remainingBalance <= 0) ||
-      (selectedPaymentMethod === 'card')
-    );
+  // Transaction completion logic - explicit handling for each payment method
+  const canCompleteTransaction = (() => {
+    if (cartItems.length === 0) return false;
+    if (!selectedPaymentMethod) return false;
+    
+    // For cash payments, require sufficient payment to cover the total
+    if (selectedPaymentMethod === 'cash') {
+      return remainingBalance <= 0;
+    }
+    
+    // For card payments, no balance validation needed - external terminal handles payment
+    if (selectedPaymentMethod === 'card') {
+      return true;
+    }
+    
+    return false;
+  })();
 
   // Enhanced complete sale function with sales recording
   const handleCompleteSale = () => {
@@ -189,19 +241,26 @@ export default function Sales() {
       return;
     }
 
+    // Ensure we have a valid payment method
+    if (!selectedPaymentMethod) {
+      console.error("No payment method selected");
+      alert('Please select a payment method before completing the transaction.');
+      return;
+    }
+
     try {
       // Generate unique sale ID
       const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
       
       // Calculate values in cents for accurate storage
       const subtotalInCents = toCents(subtotalAmount);
-      const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
+      const taxInCents = calculateTax(subtotalInCents, STORE_CONFIG.defaultTaxRate);
       const discountInCents = toCents(cartDiscountAmount);
       const totalInCents = toCents(totalAmount);
       const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
       
-      // Use the selected payment method instead of inferring it
-      const paymentMethod = selectedPaymentMethod!;
+      // Use the selected payment method explicitly to prevent misclassification
+      const paymentMethod = selectedPaymentMethod;
       
       // Construct comprehensive saleData object
       const saleData: SaleData = {
@@ -211,7 +270,7 @@ export default function Sales() {
         taxAmount: taxInCents, // in cents
         discountAmount: discountInCents, // in cents
         paymentMethod,
-        cashierId: 'mock_cashier_123',
+        cashierId: STORE_CONFIG.defaultCashierId,
         isRefund: false,
         originalSaleId: null,
         changeGiven: paymentMethod === 'cash' ? changeGivenInCents : 0, // in cents
@@ -230,7 +289,7 @@ export default function Sales() {
             name: item.name,
             quantity: item.quantity,
             priceAtSale: toCents(item.price), // in cents
-            costAtSale: toCents(item.cost || item.price * 0.7), // mock cost if not available, in cents
+            costAtSale: toCents(item.cost || item.price * (100 - STORE_CONFIG.defaultMarkupPercentage) / 100), // mock cost if not available, in cents
             appliedDiscount: toCents(itemDiscountAmount), // in cents
             finalLineTotal: toCents(finalLineTotal), // in cents
           };
@@ -246,9 +305,12 @@ export default function Sales() {
       // Reset payment method selection
       setSelectedPaymentMethod(null);
 
-      // Show receipt
-      setLastSaleData(saleData);
-      setShowReceipt(true);
+      // Show payment confirmation modal
+      setConfirmedSaleData(saleData);
+      setShowPaymentConfirmedModal(true);
+
+      // Close the checkout modal
+      setCheckoutModalOpen(false);
     } catch (error) {
       console.error('Failed to complete sale:', error);
       alert('Failed to complete sale. Please try again.');
@@ -323,30 +385,13 @@ export default function Sales() {
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
         </div>
 
-        {searchQuery && (
-          <div className="mb-4">
-            <h2 className="text-lg font-medium mb-2 text-gray-300">Search Results</h2>
-            <div className="space-y-2">
-              {searchResults.map((result, index) => (
-                <div
-                  key={result.id}
-                  className={`p-3 rounded-lg flex justify-between items-center cursor-pointer ${index === activeItem ? 'bg-amber-600' : 'bg-gray-800'}`}
-                  onClick={() => {
-                    setActiveItem(index)
-                    addToCart(result)
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="w-8 text-center">1</span>
-                    <span className="w-20">{result.sku}</span>
-                    <span className="flex-1">{result.name}</span>
-                  </div>
-                  <span className="font-medium">{formatCurrency(toCents(result.price))}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <SearchResults
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          activeItem={activeItem}
+          onAddToCart={addToCart}
+          onSetActiveItem={setActiveItem}
+        />
 
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
@@ -365,140 +410,13 @@ export default function Sales() {
                 </div>
               </div>
               {cartItems.map((item) => (
-                <div
+                <CartItemRow
                   key={item.id}
-                  className="p-3 bg-gray-800 rounded-lg flex justify-between items-center"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      >
-                        <Minus size={16} className="text-gray-300" />
-                      </button>
-                      <input
-                        type="text"
-                        value={editingQuantity[item.id] !== undefined ? editingQuantity[item.id] : item.quantity.toString()}
-                        style={{
-                          width: '70px',
-                          height: '30px',
-                          textAlign: 'center',
-                          backgroundColor: 'white',
-                          color: 'black',
-                          border: '2px solid black',
-                          fontSize: '18px',
-                          padding: '2px'
-                        }}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          
-                          // Allow empty string or numeric input during typing
-                          if (inputValue === '' || /^\d+$/.test(inputValue)) {
-                            // Update the editing state to allow user to see their input
-                            setEditingQuantity(prev => ({ ...prev, [item.id]: inputValue }));
-                            
-                            // If it's a valid number, also update the actual quantity
-                            if (inputValue !== '') {
-                              const numValue = parseInt(inputValue, 10);
-                              if (!isNaN(numValue) && numValue >= 1) {
-                                updateQuantity(item.id, numValue);
-                              }
-                            }
-                          }
-                        }}
-                        onFocus={() => {
-                          // Set the editing state when focusing
-                          setEditingQuantity(prev => ({ ...prev, [item.id]: item.quantity.toString() }));
-                        }}
-                        onBlur={() => {
-                          // On blur, validate and finalize the input
-                          const currentEditValue = editingQuantity[item.id];
-                          if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
-
-                            // If invalid, just clear editing state - no need to update store with existing value
-
-                          } else {
-                            // Ensure the quantity is updated with the final valid value
-                            const finalValue = parseInt(currentEditValue, 10);
-                            updateQuantity(item.id, finalValue);
-                          }
-                          // Clear editing state
-                          setEditingQuantity(prev => {
-                            const newState = { ...prev };
-                            delete newState[item.id];
-                            return newState;
-                          });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur(); // Trigger blur to finalize the input
-                          }
-                        }}
-                      />
-                      <button
-                        className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        <Plus size={16} className="text-gray-300" />
-                      </button>
-                    </div>
-                    <span className="w-20">{item.sku}</span>
-                    <div className="flex-1 flex items-center gap-2">
-                      <span>{item.name}</span>
-                      {item.discount && (
-                        <div className="flex items-center gap-1">
-                          <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' 
-                              ? `${formatCurrency(toCents(Math.min(item.discount.amount, item.price * item.quantity)))} off total` 
-                              : `${item.discount.amount}% off`}
-                          </span>
-                          <button
-                            className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
-                            onClick={() => {
-                              setItemDiscount(item.id, undefined)
-                            }}
-                            title="Remove discount"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-right">
-                      <span className="text-gray-100">{formatCurrency(toCents(item.price))}</span>
-                    </div>
-                    <div className="w-24 text-right font-medium">
-                                              {item.discount ? (
-                          <div>
-                            <span className="line-through text-gray-500 text-sm">{formatCurrency(toCents(item.price * item.quantity))}</span>
-                            <div className="text-green-400">
-                              {item.discount.type === 'flat' 
-                                ? formatCurrency(Math.max(0, toCents(item.price * item.quantity) - toCents(item.discount.amount)))
-                                : formatCurrency(toCents(item.price * item.quantity) - calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))
-                              }
-                            </div>
-                            <div className="text-xs text-green-300">
-                              {item.discount.type === 'flat' 
-                                ? `(-${formatCurrency(Math.min(toCents(item.discount.amount), toCents(item.price * item.quantity)))})`
-                                : `(-${formatCurrency(calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))})`
-                              }
-                            </div>
-                          </div>
-                        ) : (
-                          <span>{formatCurrency(toCents(item.price * item.quantity))}</span>
-                        )}
-                    </div>
-                    <button
-                      className="p-1 rounded-md text-gray-400 hover:text-red-500"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2Icon size={18} />
-                    </button>
-                  </div>
-                </div>
+                  item={item}
+                  onUpdateQuantity={updateQuantity}
+                  onRemoveFromCart={removeFromCart}
+                  onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
+                />
               ))}
             </div>
           ) : (
@@ -1020,25 +938,7 @@ export default function Sales() {
                   />
                                     </div>
 
-                    {/* Validation message for flat discounts */}
-                    {selectedItemForDiscount && discountType === 'flat' && discountAmount && parseFloat(discountAmount) > 0 && (
-                      (() => {
-                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
-                        if (selectedItem) {
-                          const lineTotal = selectedItem.price * selectedItem.quantity
-                          if (parseFloat(discountAmount) > lineTotal) {
-                            return (
-                              <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
-                                <strong>Warning:</strong> Discount amount ({formatCurrency(toCents(parseFloat(discountAmount)))}) cannot exceed line total ({formatCurrency(toCents(lineTotal))})
-                              </div>
-                            )
-                          }
-                        }
-                        return null
-                      })()
-                    )}
-
-                    <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
                     onClick={() => setDiscountModalOpen(false)}
@@ -1211,6 +1111,24 @@ export default function Sales() {
                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
                       />
                     </div>
+
+                    {/* Validation message for flat discounts on specific items */}
+                    {selectedItemForDiscount && discountType === 'flat' && discountAmount && parseFloat(discountAmount) > 0 && (
+                      (() => {
+                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
+                        if (selectedItem) {
+                          const lineTotal = selectedItem.price * selectedItem.quantity
+                          if (parseFloat(discountAmount) > lineTotal) {
+                            return (
+                              <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
+                                <strong>Warning:</strong> Discount amount ({formatCurrency(toCents(parseFloat(discountAmount)))}) cannot exceed line total ({formatCurrency(toCents(lineTotal))})
+                              </div>
+                            )
+                          }
+                        }
+                        return null
+                      })()
+                    )}
                   </>
                 )}
 
@@ -1261,72 +1179,29 @@ export default function Sales() {
         </div>
       )}
 
-      {/* Receipt Display Modal */}
-      {showReceipt && lastSaleData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black bg-opacity-50"
-            onClick={() => {
-              setShowReceipt(false)
-              setLastSaleData(null)
-            }}
-          ></div>
-          
-          <div className="relative bg-white rounded-lg shadow-xl mx-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto border-2 border-green-500">
-            <div className="flex justify-between items-center p-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-black">Transaction Complete</h2>
-              <button
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-black rounded"
-                onClick={() => {
-                  setShowReceipt(false)
-                  setLastSaleData(null)
-                }}
-              >
-                Close
-              </button>
-            </div>
 
-            <div className="p-4">
-              {/* Success Message */}
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Check size={32} className="text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-green-600 mb-1">
-                  Payment Successful!
-                </h3>
-                <p className="text-gray-600">
-                  Sale ID: {lastSaleData.id}
-                </p>
-              </div>
+      {/* Payment Confirmed Modal */}
+      {showPaymentConfirmedModal && confirmedSaleData && (
+        <PaymentConfirmedModal
+          saleData={confirmedSaleData}
+          onClose={() => {
+            setShowPaymentConfirmedModal(false);
+            setConfirmedSaleData(null);
+            // Clear cart and reset all state for a new sale
+            clearCart();
+            setCustomerPayment(0);
+            setCustomerPaymentInput('');
+            setAppliedCashPayment(0);
+            setDiscountModalOpen(false);
+            setDiscountModalStep('initial');
+            setDiscountAmount('');
+            setDiscountType('flat');
+            setDiscountReason('');
+            setSelectedItemForDiscount(null);
+          }}
+          onPrint={handlePrintReceipt}
+        />
 
-              {/* Receipt Display */}
-              <div className="receipt-wrapper mb-4">
-                <ReceiptDisplay saleData={lastSaleData} />
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 no-print">
-                <button 
-                  className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-black font-medium rounded-lg flex items-center justify-center gap-2"
-                  onClick={() => window.print()}
-                >
-                  <Receipt size={18} />
-                  Print Receipt
-                </button>
-                <button 
-                  className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-                  onClick={() => {
-                    setShowReceipt(false)
-                    setLastSaleData(null)
-                  }}
-                >
-                  New Sale
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )
