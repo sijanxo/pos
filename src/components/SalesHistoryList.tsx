@@ -85,8 +85,8 @@ export function SalesHistoryList({ className = '' }: SalesHistoryListProps) {
 
       {/* Modal for Receipt Display */}
       {selectedSale && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4">
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleCloseModal}>
+          <div className="modal-content bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header flex justify-between items-center p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-text">Receipt Details</h3>
               <button
