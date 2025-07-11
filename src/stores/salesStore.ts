@@ -1,25 +1,27 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-// Define the structure for sale data
+// Define the structure for sale data - all monetary values stored in CENTS
 export interface SaleData {
   id: string;
-  timestamp: string;
-  customerName?: string;
+  saleDate: string;
+  totalAmount: number; // in cents
+  taxAmount: number; // in cents
+  discountAmount: number; // in cents
+  paymentMethod: 'cash' | 'card';
+  cashierId: string;
+  isRefund: boolean;
+  originalSaleId: string | null;
+  changeGiven: number; // in cents
   items: Array<{
-    id: string;
+    productId: string;
     name: string;
     quantity: number;
-    price: number;
-    total: number;
+    priceAtSale: number; // in cents
+    costAtSale: number; // in cents
+    appliedDiscount: number; // in cents
+    finalLineTotal: number; // in cents
   }>;
-  subtotal: number;
-  tax: number;
-  discount: number;
-  total: number;
-  paymentMethod: string;
-  cashierName: string;
-  receiptNumber: string;
 }
 
 interface SalesStore {
@@ -62,7 +64,7 @@ export const useSalesStore = create<SalesStore>()(
         const end = new Date(endDate);
         
         return salesHistory.filter(sale => {
-          const saleDate = new Date(sale.timestamp);
+          const saleDate = new Date(sale.saleDate);
           return saleDate >= start && saleDate <= end;
         });
       },
@@ -84,14 +86,14 @@ export const useSalesStore = create<SalesStore>()(
         const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
         
         return salesHistory.filter(sale => {
-          const saleDate = new Date(sale.timestamp);
+          const saleDate = new Date(sale.saleDate);
           return saleDate >= todayStart && saleDate < todayEnd;
         });
       },
 
       getTotalRevenue: () => {
         const { salesHistory } = get();
-        return salesHistory.reduce((total: number, sale: SaleData) => total + sale.total, 0);
+        return salesHistory.reduce((total: number, sale: SaleData) => total + sale.totalAmount, 0);
       },
     }),
     {
