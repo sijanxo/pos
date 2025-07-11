@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
+
 import { useCartStore, CartItem } from '@/stores/cartStore'
 import { Product } from '@/types'
+
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -320,7 +322,9 @@ export default function Sales() {
                           // On blur, validate and finalize the input
                           const currentEditValue = editingQuantity[item.id];
                           if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
+
                             // If invalid, just clear editing state - no need to update store with existing value
+
                           } else {
                             // Ensure the quantity is updated with the final valid value
                             const finalValue = parseInt(currentEditValue, 10);

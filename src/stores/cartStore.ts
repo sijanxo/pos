@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+
 import { Product } from '@/types';
+
 
 export interface CartItem extends Product {
   quantity: number;
@@ -26,7 +28,9 @@ interface CartStore {
   // Discount modal states
   isDiscountModalOpen: boolean;
   discountModalStep: 'initial' | 'entireCart' | 'specificItem';
+
   selectedItemForDiscount: string | null;
+
   discountAmount: string;
   discountType: 'flat' | 'percentage';
   discountReason: string;
@@ -40,16 +44,20 @@ interface CartStore {
   // Actions
   setSearchQuery: (query: string) => void;
   addToCart: (item: Product) => void;
+
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, newQuantity: number) => void;
+
   clearCart: () => void;
   
   // Discount actions
   setCartDiscount: (discount: CartDiscount | null) => void;
+
   setItemDiscount: (itemId: string, discount: CartItem['discount']) => void;
   setDiscountModalOpen: (open: boolean) => void;
   setDiscountModalStep: (step: 'initial' | 'entireCart' | 'specificItem') => void;
   setSelectedItemForDiscount: (itemId: string | null) => void;
+
   setDiscountAmount: (amount: string) => void;
   setDiscountType: (type: 'flat' | 'percentage') => void;
   setDiscountReason: (reason: string) => void;
@@ -73,6 +81,7 @@ export const useCartStore = create<CartStore>()(
         searchQuery: '',
         cartItems: [
           {
+
             id: '5',
             sku: 'SP-001',
             name: 'Gin',
@@ -147,6 +156,7 @@ export const useCartStore = create<CartStore>()(
           }
         },
         
+
         removeFromCart: (id: string) => {
           const { cartItems } = get();
           set({
@@ -154,7 +164,9 @@ export const useCartStore = create<CartStore>()(
           });
         },
         
+
         updateQuantity: (id: string, newQuantity: number) => {
+
           if (newQuantity < 1) return;
           
           const { cartItems } = get();
@@ -180,7 +192,9 @@ export const useCartStore = create<CartStore>()(
           set({ cartDiscount: discount });
         },
         
+
         setItemDiscount: (itemId: string, discount: CartItem['discount']) => {
+
           const { cartItems } = get();
           set({
             cartItems: cartItems.map((item) =>
@@ -199,7 +213,9 @@ export const useCartStore = create<CartStore>()(
           set({ discountModalStep: step });
         },
         
+
         setSelectedItemForDiscount: (itemId: string | null) => {
+
           set({ selectedItemForDiscount: itemId });
         },
         
