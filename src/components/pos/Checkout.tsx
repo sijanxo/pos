@@ -53,6 +53,10 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
       // Generate unique sale ID
       const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
       
+      // Handle payment method mapping (split payments mapped to cash for simplicity)
+      const mappedPaymentMethod: 'cash' | 'card' = 
+        transaction.paymentMethod === 'split' ? 'cash' : transaction.paymentMethod;
+      
       // Construct comprehensive saleData object (all values in cents)
       const saleData = {
         id: saleId,
@@ -60,7 +64,7 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
         totalAmount: transaction.total, // already in cents
         taxAmount: transaction.tax, // already in cents
         discountAmount: transaction.discount, // already in cents
-        paymentMethod: transaction.paymentMethod,
+        paymentMethod: mappedPaymentMethod,
         cashierId: transaction.cashierId || 'mock_cashier_123',
         isRefund: false,
         originalSaleId: null,
