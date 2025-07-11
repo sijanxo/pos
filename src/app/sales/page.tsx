@@ -53,6 +53,9 @@ export default function Sales() {
   // Add state for receipt display
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSaleData, setLastSaleData] = useState<SaleData | null>(null);
+  
+  // Add payment method selection state
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: '1',
@@ -171,9 +174,20 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
+  // Transaction completion logic
+  const canCompleteTransaction = 
+    cartItems.length > 0 && (
+      (selectedPaymentMethod === 'cash' && remainingBalance <= 0) ||
+      (selectedPaymentMethod === 'card')
+    );
+
   // Enhanced complete sale function with sales recording
   const handleCompleteSale = () => {
-    if (cartItems.length === 0 || remainingBalance > 0) return;
+    // Use the new completion logic
+    if (!canCompleteTransaction) {
+      console.warn("Transaction cannot be completed based on current payment state.");
+      return;
+    }
 
     try {
       // Generate unique sale ID
@@ -184,10 +198,10 @@ export default function Sales() {
       const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
       const discountInCents = toCents(cartDiscountAmount);
       const totalInCents = toCents(totalAmount);
-      const changeGivenInCents = toCents(appliedCashPayment - totalAmount);
+      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
       
-      // Determine payment method based on whether cash was applied
-      const paymentMethod: 'cash' | 'card' = appliedCashPayment > 0 ? 'cash' : 'card';
+      // Use the selected payment method instead of inferring it
+      const paymentMethod = selectedPaymentMethod!;
       
       // Construct comprehensive saleData object
       const saleData: SaleData = {
@@ -228,6 +242,9 @@ export default function Sales() {
 
       // Clear cart and reset payment state
       completeSale();
+
+      // Reset payment method selection
+      setSelectedPaymentMethod(null);
 
       // Show receipt
       setLastSaleData(saleData);
@@ -548,6 +565,7 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
+              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(true)
             }}
           >
@@ -589,6 +607,7 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
+              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(false)
             }}
           ></div>
@@ -629,17 +648,52 @@ export default function Sales() {
                 )}
               </div>
 
-              <div className={`mb-3 p-2 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
+              {/* Payment Method Selection */}
+              <div className="mb-3 p-2 bg-gray-50 rounded">
+                <div className="text-black font-medium text-sm mb-2">Payment Method</div>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
+                      selectedPaymentMethod === 'cash'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-black'
+                    }`}
+                    onClick={() => setSelectedPaymentMethod('cash')}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
+                      selectedPaymentMethod === 'card'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-black'
+                    }`}
+                    onClick={() => setSelectedPaymentMethod('card')}
+                  >
+                    Card
+                  </button>
+                </div>
+              </div>
+
+              <div className={`mb-3 p-2 rounded ${canCompleteTransaction ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
-                    {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
+                  <span className={`font-medium ${canCompleteTransaction ? 'text-green-700' : 'text-black'}`}>
+                    {selectedPaymentMethod === 'cash' 
+                      ? (remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance')
+                      : selectedPaymentMethod === 'card'
+                      ? 'Ready for Card Payment'
+                      : 'Select Payment Method'}
                   </span>
-                  <span className={`font-bold text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
-                    {remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance))}
+                  <span className={`font-bold text-lg ${canCompleteTransaction ? 'text-green-700' : 'text-blue-700'}`}>
+                    {selectedPaymentMethod === 'cash' 
+                      ? (remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance)))
+                      : selectedPaymentMethod === 'card'
+                      ? formatCurrency(toCents(totalAmount))
+                      : formatCurrency(toCents(totalAmount))}
                   </span>
                 </div>
                 <div className="h-12 mt-2">
-                  {remainingBalance <= 0 ? (
+                  {canCompleteTransaction ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
@@ -655,7 +709,7 @@ export default function Sales() {
               </div>
 
               <div className="mb-3 h-20">
-                {remainingBalance > 0 ? (
+                {selectedPaymentMethod === 'cash' && remainingBalance > 0 ? (
                   <div className="p-2 bg-gray-100 rounded h-full">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-black font-medium text-sm">Customer Payment</span>
@@ -711,7 +765,7 @@ export default function Sales() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
-                      Enter, click elsewhere, or 'cash' to apply
+                      Enter, click elsewhere, or 'Apply Cash' to apply
                     </div>
                     <div className="h-5 mt-1">
                       {customerPayment > 0 ? (
@@ -726,13 +780,22 @@ export default function Sales() {
                       )}
                     </div>
                   </div>
+                ) : selectedPaymentMethod === 'card' ? (
+                  <div className="p-2 bg-blue-50 border border-blue-200 rounded h-full">
+                    <div className="text-center text-black">
+                      <div className="font-medium text-sm mb-1">Card Payment Selected</div>
+                      <div className="text-xs text-gray-600">
+                        Process payment on external terminal, then click "Complete Transaction"
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="h-full"></div>
                 )}
               </div>
             </div>
 
-            {remainingBalance > 0 && (
+            {selectedPaymentMethod === 'cash' && remainingBalance > 0 && (
               <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
                 <div className="flex-1 min-h-0">
                   <div className="grid grid-cols-3 gap-1 h-full max-h-40">
@@ -772,13 +835,7 @@ export default function Sales() {
                       }
                     }}
                   >
-                    cash
-                  </button>
-                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
-                    credit
-                  </button>
-                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
-                    debit
+                    Apply Cash
                   </button>
                 </div>
               </div>
@@ -803,6 +860,7 @@ export default function Sales() {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
+                    setSelectedPaymentMethod(null)
                     setCheckoutModalOpen(false)
                   }}
                 >
