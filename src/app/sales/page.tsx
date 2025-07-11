@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId } from '@/utils'
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
 import { useSalesStore, SaleData } from '@/stores/salesStore'
 import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
 import { ReceiptDisplay } from '@/components/ReceiptDisplay'
+
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -43,6 +45,7 @@ export default function Sales() {
     setAppliedCashPayment,
     cancelSale,
   } = useCartStore();
+
 
   // Sales store for saving completed sales
   const { addSale } = useSalesStore();
@@ -352,30 +355,67 @@ export default function Sales() {
     }, 500);
   };
 
+
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
-      id: 1,
+      id: '1',
       sku: 'WN-001',
       name: 'Cabernet Sauvignon',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 24.99,
+      cost: 18.00,
+      stockQuantity: 25,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 2,
+      id: '2',
       sku: 'WN-002',
       name: 'Chardonnay',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 19.99,
+      cost: 15.00,
+      stockQuantity: 30,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 3,
+      id: '3',
       sku: 'WN-003',
       name: 'Merlot',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 22.99,
+      cost: 17.00,
+      stockQuantity: 20,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 4,
+      id: '4',
       sku: 'BR-001',
       name: 'Craft IPA',
+      category: 'Beer',
+      brand: 'Local Brewery',
+      volumeMl: 500,
       price: 12.99,
+      cost: 8.00,
+      stockQuantity: 40,
+      minStockLevel: 10,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   ])
   const [activeItem, setActiveItem] = useState(0)
@@ -426,13 +466,112 @@ export default function Sales() {
   
   const cartDiscountAmount = cartDiscount 
     ? cartDiscount.type === 'flat' 
-      ? cartDiscount.amount 
+      ? Math.min(cartDiscount.amount, subtotalAmount) 
       : subtotalAmount * (cartDiscount.amount / 100)
     : 0
     
   const totalAmount = Math.max(0, subtotalAmount - cartDiscountAmount)
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
+
+  // Transaction completion logic - explicit handling for each payment method
+  const canCompleteTransaction = (() => {
+    if (cartItems.length === 0) return false;
+    if (!selectedPaymentMethod) return false;
+    
+    // For cash payments, require sufficient payment to cover the total
+    if (selectedPaymentMethod === 'cash') {
+      return remainingBalance <= 0;
+    }
+    
+    // For card payments, no balance validation needed - external terminal handles payment
+    if (selectedPaymentMethod === 'card') {
+      return true;
+    }
+    
+    return false;
+  })();
+
+  // Enhanced complete sale function with sales recording
+  const handleCompleteSale = () => {
+    // Use the new completion logic
+    if (!canCompleteTransaction) {
+      console.warn("Transaction cannot be completed based on current payment state.");
+      return;
+    }
+
+    // Ensure we have a valid payment method
+    if (!selectedPaymentMethod) {
+      console.error("No payment method selected");
+      alert('Please select a payment method before completing the transaction.');
+      return;
+    }
+
+    try {
+      // Generate unique sale ID
+      const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+      
+      // Calculate values in cents for accurate storage
+      const subtotalInCents = toCents(subtotalAmount);
+      const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
+      const discountInCents = toCents(cartDiscountAmount);
+      const totalInCents = toCents(totalAmount);
+      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
+      
+      // Use the selected payment method explicitly to prevent misclassification
+      const paymentMethod = selectedPaymentMethod;
+      
+      // Construct comprehensive saleData object
+      const saleData: SaleData = {
+        id: saleId,
+        saleDate: new Date().toISOString(),
+        totalAmount: totalInCents, // in cents
+        taxAmount: taxInCents, // in cents
+        discountAmount: discountInCents, // in cents
+        paymentMethod,
+        cashierId: 'mock_cashier_123',
+        isRefund: false,
+        originalSaleId: null,
+        changeGiven: paymentMethod === 'cash' ? changeGivenInCents : 0, // in cents
+        items: cartItems.map((item: CartItem) => {
+          // Calculate item-level values
+          const itemSubtotal = item.price * item.quantity;
+          const itemDiscountAmount = item.discount 
+            ? (item.discount.type === 'flat' 
+                ? Math.min(item.discount.amount, itemSubtotal)
+                : itemSubtotal * (item.discount.amount / 100))
+            : 0;
+          const finalLineTotal = itemSubtotal - itemDiscountAmount;
+          
+          return {
+            productId: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            priceAtSale: toCents(item.price), // in cents
+            costAtSale: toCents(item.cost || item.price * 0.7), // mock cost if not available, in cents
+            appliedDiscount: toCents(itemDiscountAmount), // in cents
+            finalLineTotal: toCents(finalLineTotal), // in cents
+          };
+        }),
+      };
+
+      // Record the sale to sales history
+      addSale(saleData);
+
+      // Clear cart and reset payment state
+      completeSale();
+
+      // Reset payment method selection
+      setSelectedPaymentMethod(null);
+
+      // Show receipt
+      setLastSaleData(saleData);
+      setShowReceipt(true);
+    } catch (error) {
+      console.error('Failed to complete sale:', error);
+      alert('Failed to complete sale. Please try again.');
+    }
+  };
 
   const generateCashAmounts = (): number[] => {
     const amounts: number[] = []
@@ -594,8 +733,9 @@ export default function Sales() {
                           // On blur, validate and finalize the input
                           const currentEditValue = editingQuantity[item.id];
                           if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
-                            // If invalid, revert to current quantity and update the quantity if needed
-                            updateQuantity(item.id, item.quantity);
+
+                            // If invalid, just clear editing state - no need to update store with existing value
+
                           } else {
                             // Ensure the quantity is updated with the final valid value
                             const finalValue = parseInt(currentEditValue, 10);
@@ -627,7 +767,9 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off`}
+                            {item.discount.type === 'flat' 
+                              ? `${formatCurrency(toCents(Math.min(item.discount.amount, item.price * item.quantity)))} off total` 
+                              : `${item.discount.amount}% off`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -694,9 +836,16 @@ export default function Sales() {
               <div className="text-gray-300 text-sm">Subtotal: {formatCurrency(toCents(subtotalAmount))}</div>
                                              {cartDiscount && (
                   <div className="text-green-400 text-sm flex items-center justify-end gap-2">
-                    <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
-                      {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
+                        {cartDiscount.type === 'flat' 
+                          ? `${formatCurrency(toCents(Math.min(cartDiscount.amount, subtotalAmount)))} off total` 
+                          : `${cartDiscount.amount}% off`}
+                      </span>
+                      <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
+                        {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
+                      </span>
+                    </div>
                     <button
                       className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                       onClick={() => setCartDiscount(null)}
@@ -734,6 +883,7 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
+              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(true)
             }}
           >
@@ -775,6 +925,7 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
+              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(false)
             }}
           ></div>
@@ -815,17 +966,52 @@ export default function Sales() {
                 )}
               </div>
 
-              <div className={`mb-3 p-2 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
+              {/* Payment Method Selection */}
+              <div className="mb-3 p-2 bg-gray-50 rounded">
+                <div className="text-black font-medium text-sm mb-2">Payment Method</div>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
+                      selectedPaymentMethod === 'cash'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-black'
+                    }`}
+                    onClick={() => setSelectedPaymentMethod('cash')}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
+                      selectedPaymentMethod === 'card'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-black'
+                    }`}
+                    onClick={() => setSelectedPaymentMethod('card')}
+                  >
+                    Card
+                  </button>
+                </div>
+              </div>
+
+              <div className={`mb-3 p-2 rounded ${canCompleteTransaction ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
-                    {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
+                  <span className={`font-medium ${canCompleteTransaction ? 'text-green-700' : 'text-black'}`}>
+                    {selectedPaymentMethod === 'cash' 
+                      ? (remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance')
+                      : selectedPaymentMethod === 'card'
+                      ? 'Ready for Card Payment'
+                      : 'Select Payment Method'}
                   </span>
-                  <span className={`font-bold text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
-                    {remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance))}
+                  <span className={`font-bold text-lg ${canCompleteTransaction ? 'text-green-700' : 'text-blue-700'}`}>
+                    {selectedPaymentMethod === 'cash' 
+                      ? (remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance)))
+                      : selectedPaymentMethod === 'card'
+                      ? formatCurrency(toCents(totalAmount))
+                      : formatCurrency(toCents(totalAmount))}
                   </span>
                 </div>
                 <div className="h-12 mt-2">
-                  {remainingBalance <= 0 ? (
+                  {canCompleteTransaction ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
@@ -841,7 +1027,7 @@ export default function Sales() {
               </div>
 
               <div className="mb-3 h-20">
-                {remainingBalance > 0 ? (
+                {selectedPaymentMethod === 'cash' && remainingBalance > 0 ? (
                   <div className="p-2 bg-gray-100 rounded h-full">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-black font-medium text-sm">Customer Payment</span>
@@ -897,7 +1083,7 @@ export default function Sales() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
-                      Enter, click elsewhere, or 'cash' to apply
+                      Enter, click elsewhere, or 'Apply Cash' to apply
                     </div>
                     <div className="h-5 mt-1">
                       {customerPayment > 0 ? (
@@ -912,13 +1098,22 @@ export default function Sales() {
                       )}
                     </div>
                   </div>
+                ) : selectedPaymentMethod === 'card' ? (
+                  <div className="p-2 bg-blue-50 border border-blue-200 rounded h-full">
+                    <div className="text-center text-black">
+                      <div className="font-medium text-sm mb-1">Card Payment Selected</div>
+                      <div className="text-xs text-gray-600">
+                        Process payment on external terminal, then click "Complete Transaction"
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="h-full"></div>
                 )}
               </div>
             </div>
 
-            {remainingBalance > 0 && (
+            {selectedPaymentMethod === 'cash' && remainingBalance > 0 && (
               <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
                 <div className="flex-1 min-h-0">
                   <div className="grid grid-cols-3 gap-1 h-full max-h-40">
@@ -958,13 +1153,7 @@ export default function Sales() {
                       }
                     }}
                   >
-                    cash
-                  </button>
-                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
-                    credit
-                  </button>
-                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
-                    debit
+                    Apply Cash
                   </button>
                 </div>
               </div>
@@ -989,6 +1178,7 @@ export default function Sales() {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
+                    setSelectedPaymentMethod(null)
                     setCheckoutModalOpen(false)
                   }}
                 >
@@ -1389,6 +1579,7 @@ export default function Sales() {
         </div>
       )}
 
+
       {/* Payment Confirmed Modal */}
       {showPaymentConfirmedModal && confirmedSaleData && (
         <PaymentConfirmedModal
@@ -1410,6 +1601,7 @@ export default function Sales() {
           }}
           onPrint={handlePrintReceipt}
         />
+
       )}
     </div>
   )
