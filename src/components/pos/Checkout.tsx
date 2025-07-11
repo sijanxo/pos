@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { CreditCard, DollarSign, Receipt, Check } from 'lucide-react';
 import { Button, Card, CardHeader, CardContent, Input } from '@/components/shared';
 import { usePOSStore } from '@/stores/posStore';
+import { useAddSale } from '@/stores/salesStore';
 import { formatCurrency, toCents, fromCents } from '@/utils';
+import { CartItem } from '@/types';
 
 interface CheckoutProps {
   onTransactionComplete?: () => void;
@@ -12,6 +14,7 @@ interface CheckoutProps {
 
 export function Checkout({ onTransactionComplete }: CheckoutProps) {
   const { cart, processTransaction } = usePOSStore();
+  const addSale = useAddSale();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,6 +46,43 @@ export function Checkout({ onTransactionComplete }: CheckoutProps) {
         paymentMethod,
         paymentMethod === 'cash' ? cashAmount : undefined
       );
+
+      // ========== SALE RECORDING LOGIC ==========
+      // After successful payment, record the sale
+      
+      // Generate unique sale ID
+      const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+      
+      // Handle payment method mapping (split payments mapped to cash for simplicity)
+      const mappedPaymentMethod: 'cash' | 'card' = 
+        transaction.paymentMethod === 'split' ? 'cash' : transaction.paymentMethod;
+      
+      // Construct comprehensive saleData object (all values in cents)
+      const saleData = {
+        id: saleId,
+        saleDate: new Date().toISOString(),
+        totalAmount: transaction.total, // already in cents
+        taxAmount: transaction.tax, // already in cents
+        discountAmount: transaction.discount, // already in cents
+        paymentMethod: mappedPaymentMethod,
+        cashierId: transaction.cashierId || 'mock_cashier_123',
+        isRefund: false,
+        originalSaleId: null,
+        changeGiven: transaction.changeGiven || 0, // already in cents
+        items: transaction.items.map((item: CartItem) => ({
+          productId: item.product.id,
+          name: item.product.name,
+          quantity: item.quantity,
+          priceAtSale: item.unitPrice, // already in cents
+          costAtSale: toCents(item.product.cost), // convert cost to cents
+          appliedDiscount: 0, // Individual item discounts not implemented yet
+          finalLineTotal: item.totalPrice, // already in cents
+        })),
+      };
+
+      // Save the sale to sales history
+      addSale(saleData);
+      // ========== END SALE RECORDING LOGIC ==========
       
       setLastTransaction(transaction);
       setShowReceipt(true);
