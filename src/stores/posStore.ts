@@ -28,7 +28,7 @@ interface POSStore extends POSState {
   applyFixedDiscount: (discountAmountInDollars: number) => void;
   
   // Helper functions
-  recalculateDiscountPercentage: (cart: Cart, newSubtotal: number) => number | undefined;
+  recalculateDiscountAmount: (cart: Cart, newSubtotal: number) => { discount: number, discountPercentage: number | undefined };
   
   // Transaction actions
   processTransaction: (paymentMethod: 'cash' | 'card', cashReceivedInDollars?: number) => Transaction;
@@ -86,13 +86,23 @@ export const usePOSStore = create<POSStore>()(
         set({ searchQuery: '', searchResults: [], selectedProduct: null });
       },
 
-      // Helper function to recalculate discount percentage when subtotal changes
-      recalculateDiscountPercentage: (cart: Cart, newSubtotal: number) => {
-        // Only recalculate if there was a percentage-based discount applied
-        if (cart.discountPercentage !== undefined && cart.discount > 0 && newSubtotal > 0) {
-          return (cart.discount / newSubtotal) * 100;
+      // Helper function to recalculate discount amount when subtotal changes (for percentage-based discounts)
+      recalculateDiscountAmount: (cart: Cart, newSubtotal: number) => {
+        // If there was a percentage-based discount applied, maintain the percentage and recalculate the amount
+        if (cart.discountPercentage !== undefined && newSubtotal > 0) {
+          const newDiscountAmount = calculateDiscountAmount(newSubtotal, cart.discountPercentage);
+          // Ensure discount doesn't exceed subtotal
+          const finalDiscountAmount = Math.min(newDiscountAmount, newSubtotal);
+          return { 
+            discount: finalDiscountAmount, 
+            discountPercentage: cart.discountPercentage // Keep original percentage
+          };
         }
-        return cart.discountPercentage;
+        // For fixed discounts or no discounts, return current values
+        return { 
+          discount: cart.discount, 
+          discountPercentage: cart.discountPercentage 
+        };
       },
 
       // Cart actions
@@ -140,10 +150,10 @@ export const usePOSStore = create<POSStore>()(
           }))
         );
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
-        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
-
-        // Recalculate discount percentage if applicable
-        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+        
+        // Recalculate discount amount if applicable
+        const updatedDiscountAmount = get().recalculateDiscountAmount(cart, subtotalInCents);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, updatedDiscountAmount.discount);
 
         set({
           cart: {
@@ -152,7 +162,8 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents, // in cents
             tax: taxInCents,          // in cents
             total: totalInCents,      // in cents
-            discountPercentage: updatedDiscountPercentage,
+            discount: updatedDiscountAmount.discount, // in cents
+            discountPercentage: updatedDiscountAmount.discountPercentage,
           }
         });
       },
@@ -168,10 +179,10 @@ export const usePOSStore = create<POSStore>()(
           }))
         );
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
-        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
-
-        // Recalculate discount percentage if applicable
-        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+        
+        // Recalculate discount amount if applicable
+        const updatedDiscountAmount = get().recalculateDiscountAmount(cart, subtotalInCents);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, updatedDiscountAmount.discount);
 
         set({
           cart: {
@@ -180,7 +191,8 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents,
             tax: taxInCents,
             total: totalInCents,
-            discountPercentage: updatedDiscountPercentage,
+            discount: updatedDiscountAmount.discount,
+            discountPercentage: updatedDiscountAmount.discountPercentage,
           }
         });
       },
@@ -209,10 +221,10 @@ export const usePOSStore = create<POSStore>()(
           }))
         );
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
-        const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
-
-        // Recalculate discount percentage if applicable
-        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+        
+        // Recalculate discount amount if applicable
+        const updatedDiscountAmount = get().recalculateDiscountAmount(cart, subtotalInCents);
+        const totalInCents = calculateTotal(subtotalInCents, taxInCents, updatedDiscountAmount.discount);
 
         set({
           cart: {
@@ -221,7 +233,8 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents,
             tax: taxInCents,
             total: totalInCents,
-            discountPercentage: updatedDiscountPercentage,
+            discount: updatedDiscountAmount.discount,
+            discountPercentage: updatedDiscountAmount.discountPercentage,
           }
         });
       },
