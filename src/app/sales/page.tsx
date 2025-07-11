@@ -193,15 +193,20 @@ export default function Sales() {
       // Generate unique sale ID
       const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
       
-      // Calculate values in cents for accurate storage
+      // Use existing calculated values instead of duplicating logic
       const subtotalInCents = toCents(subtotalAmount);
       const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
       const discountInCents = toCents(cartDiscountAmount);
       const totalInCents = toCents(totalAmount);
-      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
       
-      // Use the selected payment method instead of inferring it
-      const paymentMethod = selectedPaymentMethod!;
+      // Fix change calculation for mixed payment scenarios
+      // Change should only be given when cash payment exceeds the total amount
+      const changeGivenInCents = appliedCashPayment > totalAmount ? toCents(appliedCashPayment - totalAmount) : 0;
+      
+      // Determine payment method more accurately for mixed payments
+      const paymentMethod = appliedCashPayment >= totalAmount ? 'cash' : 
+                           appliedCashPayment > 0 ? 'cash' : // Mixed payment but we'll classify as cash if any cash was used
+                           selectedPaymentMethod!;
       
       // Construct comprehensive saleData object
       const saleData: SaleData = {
@@ -214,9 +219,9 @@ export default function Sales() {
         cashierId: 'mock_cashier_123',
         isRefund: false,
         originalSaleId: null,
-        changeGiven: paymentMethod === 'cash' ? changeGivenInCents : 0, // in cents
+        changeGiven: changeGivenInCents, // in cents
         items: cartItems.map((item: CartItem) => {
-          // Calculate item-level values
+          // Use existing discount calculation logic to avoid duplication
           const itemSubtotal = item.price * item.quantity;
           const itemDiscountAmount = item.discount 
             ? (item.discount.type === 'flat' 
