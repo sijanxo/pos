@@ -1,13 +1,8 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { Product as BaseProduct } from '@/types';
 
-export interface Product {
-  id: number;
-  sku: string;
-  name: string;
-  price: number;
-}
+import { Product } from '@/types';
+
 
 export interface CartItem extends Product {
   quantity: number;
@@ -33,7 +28,9 @@ interface CartStore {
   // Discount modal states
   isDiscountModalOpen: boolean;
   discountModalStep: 'initial' | 'entireCart' | 'specificItem';
-  selectedItemForDiscount: number | null;
+
+  selectedItemForDiscount: string | null;
+
   discountAmount: string;
   discountType: 'flat' | 'percentage';
   discountReason: string;
@@ -47,16 +44,20 @@ interface CartStore {
   // Actions
   setSearchQuery: (query: string) => void;
   addToCart: (item: Product) => void;
-  removeFromCart: (id: number) => void;
-  updateQuantity: (id: number, newQuantity: number) => void;
+
+  removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, newQuantity: number) => void;
+
   clearCart: () => void;
   
   // Discount actions
   setCartDiscount: (discount: CartDiscount | null) => void;
-  setItemDiscount: (itemId: number, discount: CartItem['discount']) => void;
+
+  setItemDiscount: (itemId: string, discount: CartItem['discount']) => void;
   setDiscountModalOpen: (open: boolean) => void;
   setDiscountModalStep: (step: 'initial' | 'entireCart' | 'specificItem') => void;
-  setSelectedItemForDiscount: (itemId: number | null) => void;
+  setSelectedItemForDiscount: (itemId: string | null) => void;
+
   setDiscountAmount: (amount: string) => void;
   setDiscountType: (type: 'flat' | 'percentage') => void;
   setDiscountReason: (reason: string) => void;
@@ -80,17 +81,36 @@ export const useCartStore = create<CartStore>()(
         searchQuery: '',
         cartItems: [
           {
-            id: 5,
+
+            id: '5',
             sku: 'SP-001',
             name: 'Gin',
+            category: 'Spirits',
+            brand: 'Premium Brand',
+            volumeMl: 750,
             price: 34.99,
+            cost: 25.00,
+            stockQuantity: 50,
+            minStockLevel: 10,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
             quantity: 1,
           },
           {
-            id: 6,
+            id: '6',
             sku: 'SP-002',
             name: 'Vodka',
+            category: 'Spirits',
+            brand: 'Premium Brand',
+            volumeMl: 750,
             price: 29.99,
+            cost: 20.00,
+            stockQuantity: 30,
+            minStockLevel: 10,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
             quantity: 2,
           },
         ],
@@ -136,14 +156,17 @@ export const useCartStore = create<CartStore>()(
           }
         },
         
-        removeFromCart: (id: number) => {
+
+        removeFromCart: (id: string) => {
           const { cartItems } = get();
           set({
             cartItems: cartItems.filter((item) => item.id !== id),
           });
         },
         
-        updateQuantity: (id: number, newQuantity: number) => {
+
+        updateQuantity: (id: string, newQuantity: number) => {
+
           if (newQuantity < 1) return;
           
           const { cartItems } = get();
@@ -169,7 +192,9 @@ export const useCartStore = create<CartStore>()(
           set({ cartDiscount: discount });
         },
         
-        setItemDiscount: (itemId: number, discount: CartItem['discount']) => {
+
+        setItemDiscount: (itemId: string, discount: CartItem['discount']) => {
+
           const { cartItems } = get();
           set({
             cartItems: cartItems.map((item) =>
@@ -188,7 +213,9 @@ export const useCartStore = create<CartStore>()(
           set({ discountModalStep: step });
         },
         
-        setSelectedItemForDiscount: (itemId: number | null) => {
+
+        setSelectedItemForDiscount: (itemId: string | null) => {
+
           set({ selectedItemForDiscount: itemId });
         },
         

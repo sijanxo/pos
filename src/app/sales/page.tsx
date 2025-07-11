@@ -1,10 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
-import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
+
+import { Search, Plus, Minus, Trash2Icon, Check, Receipt } from 'lucide-react' // Merged icons
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount, calculateTax, generateId } from '@/utils' // Merged utils, including calculateTax
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
-import { useSalesStore, SaleData } from '@/stores/salesStore'
+
+import { useSalesStore, SaleData } from '@/stores/salesStore' // Using useSalesStore
+import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal' // New modal component
+import { ReceiptDisplay } from '@/components/ReceiptDisplay' // Keep for direct rendering if needed elsewhere, but print logic will generate HTML
+
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -39,34 +44,80 @@ export default function Sales() {
     setCustomerPayment,
     setCustomerPaymentInput,
     setAppliedCashPayment,
-    completeSale,
     cancelSale,
   } = useCartStore();
-  const { addSale } = useSalesStore();
+
+
+  // Sales store hook
+  const { addSale } = useSalesStore(); // Use this consistently
+
+  // State for PaymentConfirmedModal
+  const [showPaymentConfirmedModal, setShowPaymentConfirmedModal] = useState<boolean>(false);
+  const [confirmedSaleData, setConfirmedSaleData] = useState<SaleData | null>(null);
+
+  // Add payment method selection state (from previous fix)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
+
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
-      id: 1,
+      id: '1',
       sku: 'WN-001',
       name: 'Cabernet Sauvignon',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 24.99,
+      cost: 18.00,
+      stockQuantity: 25,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 2,
+      id: '2',
       sku: 'WN-002',
       name: 'Chardonnay',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 19.99,
+      cost: 15.00,
+      stockQuantity: 30,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 3,
+      id: '3',
       sku: 'WN-003',
       name: 'Merlot',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 22.99,
+      cost: 17.00,
+      stockQuantity: 20,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 4,
+      id: '4',
       sku: 'BR-001',
       name: 'Craft IPA',
+      category: 'Beer',
+      brand: 'Local Brewery',
+      volumeMl: 500,
       price: 12.99,
+      cost: 8.00,
+      stockQuantity: 40,
+      minStockLevel: 10,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   ])
   const [activeItem, setActiveItem] = useState(0)
@@ -114,13 +165,13 @@ export default function Sales() {
     },
     0,
   )
-  
-  const cartDiscountAmount = cartDiscount 
-    ? cartDiscount.type === 'flat' 
-      ? cartDiscount.amount 
+
+  const cartDiscountAmount = cartDiscount
+    ? cartDiscount.type === 'flat'
+      ? Math.min(cartDiscount.amount, subtotalAmount)
       : subtotalAmount * (cartDiscount.amount / 100)
     : 0
-    
+
   const totalAmount = Math.max(0, subtotalAmount - cartDiscountAmount)
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
@@ -1241,121 +1292,62 @@ export default function Sales() {
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Discount Amount
-                      </label>
-                      <input
-                        type="text"
-                        value={discountAmount}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
-                            setDiscountAmount(value)
-                          }
-                        }}
-                        placeholder="0.00"
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
+  // Transaction completion logic - explicit handling for each payment method (from previous fix)
+  const canCompleteTransaction = (() => {
+    if (cartItems.length === 0) return false;
+    if (!selectedPaymentMethod) return false;
 
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Discount Type
-                      </label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="discountType"
-                            value="flat"
-                            checked={discountType === 'flat'}
-                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
-                            className="mr-2 text-amber-500"
-                          />
-                          <div className="text-left">
-                            <span className="text-gray-300">$ (Flat Amount)</span>
-                            <div className="text-xs text-gray-500">Deducted from line total</div>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="discountType"
-                            value="percentage"
-                            checked={discountType === 'percentage'}
-                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
-                            className="mr-2 text-amber-500"
-                          />
-                          <div className="text-left">
-                            <span className="text-gray-300">% (Percentage)</span>
-                            <div className="text-xs text-gray-500">Percent off line total</div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
+    // For cash payments, require sufficient payment to cover the total
+    if (selectedPaymentMethod === 'cash') {
+      return remainingBalance <= 0;
+    }
 
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Reason/Note (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={discountReason}
-                        onChange={(e) => setDiscountReason(e.target.value)}
-                        placeholder="e.g., Employee discount, Promotion, etc."
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </>
-                )}
 
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
-                    onClick={() => setDiscountModalOpen(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={(() => {
-                      if (!selectedItemForDiscount || !discountAmount || parseFloat(discountAmount) <= 0) return true
-                      
-                      // For flat discounts on specific items, prevent discount larger than line total
-                      if (discountType === 'flat') {
-                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
-                        if (selectedItem) {
-                          const lineTotal = selectedItem.price * selectedItem.quantity
-                          return parseFloat(discountAmount) > lineTotal
-                        }
-                      }
-                      
-                      return false
-                    })()}
-                    onClick={() => {
-                      const amount = parseFloat(discountAmount)
-                      setItemDiscount(selectedItemForDiscount!, {
-                        amount,
-                        type: discountType,
-                        reason: discountReason || undefined
-                      })
-                      setDiscountModalOpen(false)
-                      setDiscountModalStep('initial')
-                      setDiscountAmount('')
-                      setDiscountType('flat')
-                      setDiscountReason('')
-                      setSelectedItemForDiscount(null)
-                    }}
-                  >
-                    Apply Discount
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+    // For card payments, no balance validation needed - external terminal handles payment
+    if (selectedPaymentMethod === 'card') {
+      return true;
+    }
+
+    return false;
+  })();
+
+  // Handle print receipt - open new window with receipt (from merged branch)
+  const handlePrintReceipt = (saleData: SaleData) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow popups to print the receipt');
+      return;
+    }
+
+    // Create the HTML content for the receipt
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${saleData.id}</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              margin: 20px;
+              color: #000;
+              background: #fff;
+            }
+            .receipt-container {
+              max-width: 300px;
+              margin: 0 auto;
+            }
+            .receipt-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 10px;
+            }
+            .receipt-header h1 {
+              margin: 0 0 10px 0;
+              font-size: 16px;
+              font-weight: bold;
+            }
+            .receipt-header p {
+              margin:
