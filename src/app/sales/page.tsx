@@ -68,6 +68,7 @@ export default function Sales() {
     },
   ])
   const [activeItem, setActiveItem] = useState(0)
+  const [editingQuantity, setEditingQuantity] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -246,7 +247,7 @@ export default function Sales() {
                       </button>
                       <input
                         type="text"
-                        value={item.quantity}
+                        value={editingQuantity[item.id] !== undefined ? editingQuantity[item.id] : item.quantity.toString()}
                         style={{
                           width: '70px',
                           height: '30px',
@@ -258,9 +259,47 @@ export default function Sales() {
                           padding: '2px'
                         }}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value, 10)
-                          if (!isNaN(value) && value >= 1) {
-                            updateQuantity(item.id, value)
+                          const inputValue = e.target.value;
+                          
+                          // Allow empty string or numeric input during typing
+                          if (inputValue === '' || /^\d+$/.test(inputValue)) {
+                            // Update the editing state to allow user to see their input
+                            setEditingQuantity(prev => ({ ...prev, [item.id]: inputValue }));
+                            
+                            // If it's a valid number, also update the actual quantity
+                            if (inputValue !== '') {
+                              const numValue = parseInt(inputValue, 10);
+                              if (!isNaN(numValue) && numValue >= 1) {
+                                updateQuantity(item.id, numValue);
+                              }
+                            }
+                          }
+                        }}
+                        onFocus={() => {
+                          // Set the editing state when focusing
+                          setEditingQuantity(prev => ({ ...prev, [item.id]: item.quantity.toString() }));
+                        }}
+                        onBlur={() => {
+                          // On blur, validate and finalize the input
+                          const currentEditValue = editingQuantity[item.id];
+                          if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
+                            // If invalid, revert to current quantity and update the quantity if needed
+                            updateQuantity(item.id, item.quantity);
+                          } else {
+                            // Ensure the quantity is updated with the final valid value
+                            const finalValue = parseInt(currentEditValue, 10);
+                            updateQuantity(item.id, finalValue);
+                          }
+                          // Clear editing state
+                          setEditingQuantity(prev => {
+                            const newState = { ...prev };
+                            delete newState[item.id];
+                            return newState;
+                          });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur(); // Trigger blur to finalize the input
                           }
                         }}
                       />
