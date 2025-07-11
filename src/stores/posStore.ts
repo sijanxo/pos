@@ -83,6 +83,15 @@ export const usePOSStore = create<POSStore>()(
         set({ searchQuery: '', searchResults: [], selectedProduct: null });
       },
 
+      // Helper function to recalculate discount percentage when subtotal changes
+      recalculateDiscountPercentage: (cart: Cart, newSubtotal: number) => {
+        // Only recalculate if there was a percentage-based discount applied
+        if (cart.discountPercentage !== undefined && cart.discount > 0 && newSubtotal > 0) {
+          return (cart.discount / newSubtotal) * 100;
+        }
+        return cart.discountPercentage;
+      },
+
       // Cart actions
       addToCart: (product: Product, quantity: number = 1) => {
         const { cart } = get();
@@ -130,6 +139,9 @@ export const usePOSStore = create<POSStore>()(
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
         const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
+        // Recalculate discount percentage if applicable
+        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+
         set({
           cart: {
             ...cart,
@@ -137,6 +149,7 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents, // in cents
             tax: taxInCents,          // in cents
             total: totalInCents,      // in cents
+            discountPercentage: updatedDiscountPercentage,
           }
         });
       },
@@ -154,6 +167,9 @@ export const usePOSStore = create<POSStore>()(
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
         const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
+        // Recalculate discount percentage if applicable
+        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+
         set({
           cart: {
             ...cart,
@@ -161,6 +177,7 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents,
             tax: taxInCents,
             total: totalInCents,
+            discountPercentage: updatedDiscountPercentage,
           }
         });
       },
