@@ -14,9 +14,13 @@ const STORE_CONFIG = {
   defaultMarkupPercentage: 40, // 40% markup (60% cost ratio)
 } as const
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId, calculateTax } from '@/utils'
-import { useCartStore, Product, CartItem } from '@/stores/cartStore'
+import { useCartStore, CartItem } from '@/stores/cartStore'
+import { Product } from '@/types'
 import { useSalesStore, SaleData } from '@/stores/salesStore'
 import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
+import { CartItemRow } from '@/components/sales/CartItemRow'
+import { SearchResults } from '@/components/sales/SearchResults'
+import { printReceipt } from '@/utils/receiptPrinter'
 
 
 export default function Sales() {
@@ -71,223 +75,8 @@ export default function Sales() {
 
 
 
-  // Handle print receipt - open new window with receipt
-  const handlePrintReceipt = (saleData: SaleData) => {
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (!printWindow) {
-      alert('Please allow popups to print the receipt');
-      return;
-    }
-
-    // Create the HTML content for the receipt
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt - ${saleData.id}</title>
-          <style>
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              line-height: 1.4;
-              margin: 20px;
-              color: #000;
-              background: #fff;
-            }
-            .receipt-container {
-              max-width: 300px;
-              margin: 0 auto;
-            }
-            .receipt-header {
-              text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 1px solid #000;
-              padding-bottom: 10px;
-            }
-            .receipt-header h1 {
-              margin: 0 0 10px 0;
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .receipt-header p {
-              margin: 2px 0;
-              font-size: 10px;
-            }
-            .sale-info {
-              margin-bottom: 15px;
-            }
-            .sale-info div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .items-section {
-              margin-bottom: 15px;
-            }
-            .items-section h3 {
-              margin: 0 0 10px 0;
-              font-size: 12px;
-              font-weight: bold;
-              border-bottom: 1px solid #000;
-              padding-bottom: 3px;
-            }
-            .item-row {
-              margin-bottom: 8px;
-            }
-            .item-name {
-              font-weight: bold;
-              margin-bottom: 2px;
-            }
-            .item-details {
-              display: flex;
-              justify-content: space-between;
-              font-size: 10px;
-            }
-            .item-total {
-              display: flex;
-              justify-content: space-between;
-              font-weight: bold;
-            }
-            .totals-section {
-              border-top: 1px solid #000;
-              padding-top: 10px;
-              margin-bottom: 15px;
-            }
-            .totals-section div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .totals-section .total-line {
-              font-weight: bold;
-              font-size: 14px;
-              border-top: 1px solid #000;
-              padding-top: 5px;
-              margin-top: 5px;
-            }
-            .payment-section {
-              margin-bottom: 15px;
-              border-top: 1px solid #000;
-              padding-top: 10px;
-            }
-            .payment-section div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .receipt-footer {
-              text-align: center;
-              border-top: 1px solid #000;
-              padding-top: 10px;
-              font-size: 10px;
-            }
-            .receipt-footer p {
-              margin: 3px 0;
-            }
-            @media print {
-              body {
-                margin: 0;
-              }
-              .receipt-container {
-                max-width: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-container">
-            <div class="receipt-header">
-              <h1>${STORE_CONFIG.name}</h1>
-              <p>${STORE_CONFIG.address}</p>
-              <p>Phone: ${STORE_CONFIG.phone}</p>
-            </div>
-
-            <div class="sale-info">
-              <div>
-                <span><strong>Sale ID:</strong></span>
-                <span>${saleData.id}</span>
-              </div>
-              <div>
-                <span><strong>Date:</strong></span>
-                <span>${new Date(saleData.saleDate).toLocaleString()}</span>
-              </div>
-              <div>
-                <span><strong>Cashier:</strong></span>
-                <span>${saleData.cashierId}</span>
-              </div>
-            </div>
-
-            <div class="items-section">
-              <h3>Items Purchased</h3>
-                             ${saleData.items.map((item: SaleData['items'][0]) => `
-                <div class="item-row">
-                  <div class="item-name">${item.name}</div>
-                  <div class="item-details">
-                    <span>${item.quantity} × ${formatCurrency(item.priceAtSale)}</span>
-                  </div>
-                  <div class="item-total">
-                    <span></span>
-                    <span>${formatCurrency(item.finalLineTotal)}</span>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-
-            <div class="totals-section">
-              <div>
-                <span>Subtotal:</span>
-                <span>${formatCurrency(saleData.items.reduce((sum, item) => sum + item.finalLineTotal, 0))}</span>
-              </div>
-              <div>
-                <span>Tax:</span>
-                <span>${formatCurrency(saleData.taxAmount)}</span>
-              </div>
-              ${saleData.discountAmount > 0 ? `
-                <div style="color: #008000;">
-                  <span>Discount:</span>
-                  <span>-${formatCurrency(saleData.discountAmount)}</span>
-                </div>
-              ` : ''}
-              <div class="total-line">
-                <span>Total:</span>
-                <span>${formatCurrency(saleData.totalAmount)}</span>
-              </div>
-            </div>
-
-            <div class="payment-section">
-              <div>
-                <span><strong>Payment Method:</strong></span>
-                <span style="text-transform: capitalize;">${saleData.paymentMethod}</span>
-              </div>
-              ${saleData.paymentMethod === 'cash' && saleData.changeGiven > 0 ? `
-                <div>
-                  <span><strong>Change Given:</strong></span>
-                  <span>${formatCurrency(saleData.changeGiven)}</span>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="receipt-footer">
-              <p>Thank you for your business!</p>
-              <p>Please drink responsibly.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
-
-    // Wait a moment for content to load, then print
-    setTimeout(() => {
-      printWindow.print();
-      // Optionally close the window after printing
-      setTimeout(() => {
-        printWindow.close();
-      }, 100);
-    }, 500);
-  };
+  // Handle print receipt - delegate to utility function
+  const handlePrintReceipt = printReceipt;
 
 
   // TODO: Replace with actual product search/fetch functionality
@@ -374,7 +163,6 @@ export default function Sales() {
     setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
   }, [searchQuery])
   const [activeItem, setActiveItem] = useState(0)
-  const [editingQuantity, setEditingQuantity] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -596,30 +384,13 @@ export default function Sales() {
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
         </div>
 
-        {searchQuery && (
-          <div className="mb-4">
-            <h2 className="text-lg font-medium mb-2 text-gray-300">Search Results</h2>
-            <div className="space-y-2">
-              {searchResults.map((result, index) => (
-                <div
-                  key={result.id}
-                  className={`p-3 rounded-lg flex justify-between items-center cursor-pointer ${index === activeItem ? 'bg-amber-600' : 'bg-gray-800'}`}
-                  onClick={() => {
-                    setActiveItem(index)
-                    addToCart(result)
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="w-8 text-center">1</span>
-                    <span className="w-20">{result.sku}</span>
-                    <span className="flex-1">{result.name}</span>
-                  </div>
-                  <span className="font-medium">{formatCurrency(toCents(result.price))}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <SearchResults
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          activeItem={activeItem}
+          onAddToCart={addToCart}
+          onSetActiveItem={setActiveItem}
+        />
 
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
@@ -638,140 +409,13 @@ export default function Sales() {
                 </div>
               </div>
               {cartItems.map((item) => (
-                <div
+                <CartItemRow
                   key={item.id}
-                  className="p-3 bg-gray-800 rounded-lg flex justify-between items-center"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      >
-                        <Minus size={16} className="text-gray-300" />
-                      </button>
-                      <input
-                        type="text"
-                        value={editingQuantity[item.id] !== undefined ? editingQuantity[item.id] : item.quantity.toString()}
-                        style={{
-                          width: '70px',
-                          height: '30px',
-                          textAlign: 'center',
-                          backgroundColor: 'white',
-                          color: 'black',
-                          border: '2px solid black',
-                          fontSize: '18px',
-                          padding: '2px'
-                        }}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          
-                          // Allow empty string or numeric input during typing
-                          if (inputValue === '' || /^\d+$/.test(inputValue)) {
-                            // Update the editing state to allow user to see their input
-                            setEditingQuantity(prev => ({ ...prev, [item.id]: inputValue }));
-                            
-                            // If it's a valid number, also update the actual quantity
-                            if (inputValue !== '') {
-                              const numValue = parseInt(inputValue, 10);
-                              if (!isNaN(numValue) && numValue >= 1) {
-                                updateQuantity(item.id, numValue);
-                              }
-                            }
-                          }
-                        }}
-                        onFocus={() => {
-                          // Set the editing state when focusing
-                          setEditingQuantity(prev => ({ ...prev, [item.id]: item.quantity.toString() }));
-                        }}
-                        onBlur={() => {
-                          // On blur, validate and finalize the input
-                          const currentEditValue = editingQuantity[item.id];
-                          if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
-
-                            // If invalid, just clear editing state - no need to update store with existing value
-
-                          } else {
-                            // Ensure the quantity is updated with the final valid value
-                            const finalValue = parseInt(currentEditValue, 10);
-                            updateQuantity(item.id, finalValue);
-                          }
-                          // Clear editing state
-                          setEditingQuantity(prev => {
-                            const newState = { ...prev };
-                            delete newState[item.id];
-                            return newState;
-                          });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur(); // Trigger blur to finalize the input
-                          }
-                        }}
-                      />
-                      <button
-                        className="p-1 rounded-md bg-gray-700 hover:bg-gray-600"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      >
-                        <Plus size={16} className="text-gray-300" />
-                      </button>
-                    </div>
-                    <span className="w-20">{item.sku}</span>
-                    <div className="flex-1 flex items-center gap-2">
-                      <span>{item.name}</span>
-                      {item.discount && (
-                        <div className="flex items-center gap-1">
-                          <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' 
-                              ? `${formatCurrency(toCents(Math.min(item.discount.amount, item.price * item.quantity)))} off total` 
-                              : `${item.discount.amount}% off`}
-                          </span>
-                          <button
-                            className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
-                            onClick={() => {
-                              setItemDiscount(item.id, undefined)
-                            }}
-                            title="Remove discount"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-24 text-right">
-                      <span className="text-gray-100">{formatCurrency(toCents(item.price))}</span>
-                    </div>
-                    <div className="w-24 text-right font-medium">
-                                              {item.discount ? (
-                          <div>
-                            <span className="line-through text-gray-500 text-sm">{formatCurrency(toCents(item.price * item.quantity))}</span>
-                            <div className="text-green-400">
-                              {item.discount.type === 'flat' 
-                                ? formatCurrency(Math.max(0, toCents(item.price * item.quantity) - toCents(item.discount.amount)))
-                                : formatCurrency(toCents(item.price * item.quantity) - calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))
-                              }
-                            </div>
-                            <div className="text-xs text-green-300">
-                              {item.discount.type === 'flat' 
-                                ? `(-${formatCurrency(Math.min(toCents(item.discount.amount), toCents(item.price * item.quantity)))})`
-                                : `(-${formatCurrency(calculateDiscountAmount(toCents(item.price * item.quantity), item.discount.amount))})`
-                              }
-                            </div>
-                          </div>
-                        ) : (
-                          <span>{formatCurrency(toCents(item.price * item.quantity))}</span>
-                        )}
-                    </div>
-                    <button
-                      className="p-1 rounded-md text-gray-400 hover:text-red-500"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2Icon size={18} />
-                    </button>
-                  </div>
-                </div>
+                  item={item}
+                  onUpdateQuantity={updateQuantity}
+                  onRemoveFromCart={removeFromCart}
+                  onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
+                />
               ))}
             </div>
           ) : (
