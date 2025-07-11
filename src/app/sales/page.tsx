@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
+import { useSalesStore, SaleData } from '@/stores/salesStore'
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -41,6 +42,7 @@ export default function Sales() {
     completeSale,
     cancelSale,
   } = useCartStore();
+  const { addSale } = useSalesStore();
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -175,6 +177,283 @@ export default function Sales() {
     }
     
     return sortedAmounts.slice(0, 9)
+  }
+
+  // Handle complete sale - saves sale data and clears cart
+  const handleCompleteSale = () => {
+    // Generate unique sale ID
+    const saleId = `SALE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    // Calculate totals
+    const subtotalAmount = cartItems.reduce(
+      (sum: number, item: CartItem) => {
+        const itemTotal = item.price * item.quantity
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            return sum + Math.max(0, itemTotal - item.discount.amount)
+          } else {
+            return sum + itemTotal * (1 - item.discount.amount / 100)
+          }
+        }
+        return sum + itemTotal
+      },
+      0,
+    )
+    
+    const cartDiscountAmount = cartDiscount 
+      ? cartDiscount.type === 'flat' 
+        ? cartDiscount.amount 
+        : subtotalAmount * (cartDiscount.amount / 100)
+      : 0
+    
+    const finalTotal = Math.max(0, subtotalAmount - cartDiscountAmount)
+    
+    // Create sale data object
+    const saleData: SaleData = {
+      id: saleId,
+      saleDate: new Date().toISOString(),
+      totalAmount: toCents(finalTotal),
+      taxAmount: 0, // No tax calculation implemented yet
+      discountAmount: toCents(cartDiscountAmount),
+      paymentMethod: 'cash', // Default to cash for now
+      cashierId: 'CASHIER-001', // Default cashier ID
+      isRefund: false,
+      originalSaleId: null,
+      changeGiven: toCents(Math.max(0, appliedCashPayment - finalTotal)),
+      items: cartItems.map(item => {
+        const itemTotal = item.price * item.quantity
+        let appliedDiscount = 0
+        let finalLineTotal = itemTotal
+        
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            appliedDiscount = Math.min(item.discount.amount, itemTotal)
+            finalLineTotal = Math.max(0, itemTotal - appliedDiscount)
+          } else {
+            appliedDiscount = itemTotal * (item.discount.amount / 100)
+            finalLineTotal = itemTotal - appliedDiscount
+          }
+        }
+        
+        return {
+          productId: item.id.toString(),
+          name: item.name,
+          quantity: item.quantity,
+          priceAtSale: toCents(item.price),
+          costAtSale: toCents(item.price * 0.6), // Assume 40% markup for cost calculation
+          appliedDiscount: toCents(appliedDiscount),
+          finalLineTotal: toCents(finalLineTotal),
+        }
+      })
+    }
+    
+    // Save the sale
+    addSale(saleData)
+    
+    // Print receipt
+    handlePrintReceipt(saleData)
+    
+    // Clear the cart
+    completeSale()
+  }
+
+  // Handle print receipt - generates and prints receipt
+  const handlePrintReceipt = (saleData: SaleData) => {
+    const receiptWindow = window.open('', '_blank', 'width=400,height=600')
+    if (!receiptWindow) {
+      alert('Please allow popups to print receipt')
+      return
+    }
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${saleData.id}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              background: white;
+              color: black;
+              width: 80mm;
+              margin: 0 auto;
+              padding: 10px;
+            }
+            .receipt-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 10px;
+            }
+            .store-name {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .store-info {
+              font-size: 10px;
+              margin-bottom: 2px;
+            }
+            .sale-info {
+              margin-bottom: 15px;
+            }
+            .sale-info-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .items-header {
+              font-weight: bold;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 5px;
+            }
+            .item-row {
+              margin-bottom: 8px;
+            }
+            .item-name {
+              font-weight: bold;
+            }
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+            }
+            .totals-section {
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              margin-top: 15px;
+            }
+            .total-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .total-final {
+              font-weight: bold;
+              font-size: 14px;
+              border-top: 1px solid #000;
+              padding-top: 5px;
+              margin-top: 5px;
+            }
+            .payment-section {
+              margin-top: 15px;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+            }
+            .receipt-footer {
+              text-align: center;
+              margin-top: 20px;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              font-size: 10px;
+            }
+            @media print {
+              body {
+                width: auto;
+                margin: 0;
+                padding: 5px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-header">
+            <div class="store-name">Premium Liquor Store</div>
+            <div class="store-info">123 Main Street, Anytown, USA</div>
+            <div class="store-info">Phone: (555) 123-4567</div>
+          </div>
+
+          <div class="sale-info">
+            <div class="sale-info-line">
+              <span><strong>Sale ID:</strong></span>
+              <span>${saleData.id}</span>
+            </div>
+            <div class="sale-info-line">
+              <span><strong>Date:</strong></span>
+              <span>${new Date(saleData.saleDate).toLocaleString()}</span>
+            </div>
+            <div class="sale-info-line">
+              <span><strong>Cashier:</strong></span>
+              <span>${saleData.cashierId}</span>
+            </div>
+          </div>
+
+          <div class="items-header">Items Purchased</div>
+          <div class="items-section">
+            ${saleData.items.map((item: SaleData['items'][0]) => `
+              <div class="item-row">
+                <div class="item-name">${item.name}</div>
+                <div class="item-details">
+                  <span>${item.quantity} × ${formatCurrency(item.priceAtSale)}</span>
+                  <span>${formatCurrency(item.finalLineTotal)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="totals-section">
+            <div class="total-line">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(saleData.items.reduce((sum, item) => sum + item.finalLineTotal, 0))}</span>
+            </div>
+            ${saleData.discountAmount > 0 ? `
+              <div class="total-line" style="color: green;">
+                <span>Discount:</span>
+                <span>-${formatCurrency(saleData.discountAmount)}</span>
+              </div>
+            ` : ''}
+            <div class="total-line">
+              <span>Tax:</span>
+              <span>${formatCurrency(saleData.taxAmount)}</span>
+            </div>
+            <div class="total-line total-final">
+              <span>Total:</span>
+              <span>${formatCurrency(saleData.totalAmount)}</span>
+            </div>
+          </div>
+
+          <div class="payment-section">
+            <div class="total-line">
+              <span><strong>Payment Method:</strong></span>
+              <span style="text-transform: capitalize;">${saleData.paymentMethod}</span>
+            </div>
+            ${saleData.changeGiven > 0 ? `
+              <div class="total-line">
+                <span><strong>Change Given:</strong></span>
+                <span>${formatCurrency(saleData.changeGiven)}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="receipt-footer">
+            <div>Thank you for your business!</div>
+            <div>Please drink responsibly.</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                  window.close();
+                }, 1000);
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `
+
+    receiptWindow.document.write(receiptHTML)
+    receiptWindow.document.close()
   }
 
   return (
@@ -518,7 +797,7 @@ export default function Sales() {
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
-                        completeSale()
+                        handleCompleteSale()
                       }}
                     >
                       Complete Transaction
