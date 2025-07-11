@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogOut, User, ShoppingCart, Package, BarChart3, Settings } from 'lucide-react';
-import { Button } from '@/components/shared';
+import { Button } from './Button';
 import { useAuthStore, useCanAccess } from '@/stores/authStore';
 
 interface AppLayoutProps {
