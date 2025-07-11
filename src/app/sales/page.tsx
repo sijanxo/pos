@@ -176,9 +176,9 @@ export default function Sales() {
 
   // Transaction completion logic
   const canCompleteTransaction = 
-    cartItems.length > 0 && (
+    cartItems.length > 0 && selectedPaymentMethod !== null && (
       (selectedPaymentMethod === 'cash' && remainingBalance <= 0) ||
-      (selectedPaymentMethod === 'card')
+      (selectedPaymentMethod === 'card' && totalAmount > 0)
     );
 
   // Enhanced complete sale function with sales recording
@@ -189,6 +189,22 @@ export default function Sales() {
       return;
     }
 
+    // Additional payment validation
+    if (!selectedPaymentMethod) {
+      alert("Please select a payment method before completing the sale.");
+      return;
+    }
+
+    if (selectedPaymentMethod === 'cash' && remainingBalance > 0) {
+      alert("Insufficient cash payment. Please apply more cash or change payment method.");
+      return;
+    }
+
+    if (selectedPaymentMethod === 'card' && totalAmount <= 0) {
+      alert("Invalid transaction total for card payment.");
+      return;
+    }
+
     try {
       // Generate unique sale ID
       const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -196,12 +212,18 @@ export default function Sales() {
       // Calculate values in cents for accurate storage
       const subtotalInCents = toCents(subtotalAmount);
       const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
-      const discountInCents = toCents(cartDiscountAmount);
+      // Ensure cart discount is properly capped to not exceed subtotal
+      const cappedCartDiscountAmount = cartDiscount 
+        ? cartDiscount.type === 'flat' 
+          ? Math.min(cartDiscount.amount, subtotalAmount)
+          : subtotalAmount * (cartDiscount.amount / 100)
+        : 0;
+      const discountInCents = toCents(cappedCartDiscountAmount);
       const totalInCents = toCents(totalAmount);
-      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
+      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(Math.max(0, appliedCashPayment - totalAmount)) : 0;
       
-      // Use the selected payment method instead of inferring it
-      const paymentMethod = selectedPaymentMethod!;
+      // Use the selected payment method with proper validation
+      const paymentMethod = selectedPaymentMethod;
       
       // Construct comprehensive saleData object
       const saleData: SaleData = {
