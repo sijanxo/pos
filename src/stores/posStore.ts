@@ -27,6 +27,9 @@ interface POSStore extends POSState {
   applyDiscount: (discountPercent: number) => void;
   applyFixedDiscount: (discountAmountInDollars: number) => void;
   
+  // Helper functions
+  recalculateDiscountPercentage: (cart: Cart, newSubtotal: number) => number | undefined;
+  
   // Transaction actions
   processTransaction: (paymentMethod: 'cash' | 'card', cashReceivedInDollars?: number) => Transaction;
   
@@ -208,6 +211,9 @@ export const usePOSStore = create<POSStore>()(
         const taxInCents = calculateTax(subtotalInCents, mockSystemSettings.taxRate);
         const totalInCents = calculateTotal(subtotalInCents, taxInCents, cart.discount);
 
+        // Recalculate discount percentage if applicable
+        const updatedDiscountPercentage = get().recalculateDiscountPercentage(cart, subtotalInCents);
+
         set({
           cart: {
             ...cart,
@@ -215,6 +221,7 @@ export const usePOSStore = create<POSStore>()(
             subtotal: subtotalInCents,
             tax: taxInCents,
             total: totalInCents,
+            discountPercentage: updatedDiscountPercentage,
           }
         });
       },
