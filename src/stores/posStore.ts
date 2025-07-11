@@ -106,9 +106,10 @@ export const usePOSStore = create<POSStore>()(
             discountPercentage: cart.discountPercentage // Keep original percentage
           };
         }
-        // For fixed discounts or no discounts, return current values
+        // For fixed discounts, ensure they don't exceed the new subtotal
+        const cappedFixedDiscount = Math.min(cart.discount, newSubtotal);
         return { 
-          discount: cart.discount, 
+          discount: cappedFixedDiscount, 
           discountPercentage: cart.discountPercentage 
         };
       },
