@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
-import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId } from '@/utils'
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
+import { useSalesStore, SaleData } from '@/stores/salesStore'
+import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
+import { ReceiptDisplay } from '@/components/ReceiptDisplay'
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -38,9 +41,317 @@ export default function Sales() {
     setCustomerPayment,
     setCustomerPaymentInput,
     setAppliedCashPayment,
-    completeSale,
     cancelSale,
   } = useCartStore();
+
+  // Sales store for saving completed sales
+  const { addSale } = useSalesStore();
+
+  // State for PaymentConfirmedModal
+  const [showPaymentConfirmedModal, setShowPaymentConfirmedModal] = useState<boolean>(false);
+  const [confirmedSaleData, setConfirmedSaleData] = useState<SaleData | null>(null);
+
+  // Handle complete sale - create sale data and show confirmation modal
+  const handleCompleteSale = () => {
+    // Calculate the final amounts
+    const subtotalAmount = cartItems.reduce(
+      (sum: number, item: CartItem) => {
+        const itemTotal = item.price * item.quantity;
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            return sum + Math.max(0, itemTotal - item.discount.amount);
+          } else {
+            return sum + itemTotal * (1 - item.discount.amount / 100);
+          }
+        }
+        return sum + itemTotal;
+      },
+      0,
+    );
+    
+    const cartDiscountAmount = cartDiscount 
+      ? cartDiscount.type === 'flat' 
+        ? cartDiscount.amount 
+        : subtotalAmount * (cartDiscount.amount / 100)
+      : 0;
+      
+    const finalTotal = Math.max(0, subtotalAmount - cartDiscountAmount);
+    const totalAmountInCents = toCents(finalTotal);
+    
+    // Determine payment method (simplified logic - assuming cash if there's applied cash payment)
+    const paymentMethod: 'cash' | 'card' = appliedCashPayment > 0 ? 'cash' : 'card';
+    
+    // Calculate change given (only for cash payments)
+    const changeGivenInCents = paymentMethod === 'cash' ? toCents(Math.max(0, appliedCashPayment - finalTotal)) : 0;
+    
+    // Create sale data
+    const saleData: SaleData = {
+      id: generateId(),
+      saleDate: new Date().toISOString(),
+      totalAmount: totalAmountInCents,
+      taxAmount: 0, // Simplified - no tax calculation for now
+      discountAmount: toCents(cartDiscountAmount),
+      paymentMethod,
+      cashierId: 'CASHIER-001', // Simplified - hardcoded cashier ID
+      isRefund: false,
+      originalSaleId: null,
+      changeGiven: changeGivenInCents,
+      items: cartItems.map(item => {
+        const baseTotal = item.price * item.quantity;
+        let finalLineTotal = baseTotal;
+        let appliedDiscount = 0;
+        
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            appliedDiscount = Math.min(item.discount.amount, baseTotal);
+            finalLineTotal = Math.max(0, baseTotal - appliedDiscount);
+          } else {
+            appliedDiscount = baseTotal * (item.discount.amount / 100);
+            finalLineTotal = baseTotal - appliedDiscount;
+          }
+        }
+        
+        return {
+          productId: item.id.toString(),
+          name: item.name,
+          quantity: item.quantity,
+          priceAtSale: toCents(item.price),
+          costAtSale: toCents(item.price * 0.6), // Simplified - assuming 40% markup
+          appliedDiscount: toCents(appliedDiscount),
+          finalLineTotal: toCents(finalLineTotal),
+        };
+      }),
+    };
+
+    // Save the sale
+    addSale(saleData);
+
+    // Show confirmation modal
+    setConfirmedSaleData(saleData);
+    setShowPaymentConfirmedModal(true);
+
+    // Close the checkout modal
+    setCheckoutModalOpen(false);
+  };
+
+  // Handle print receipt - open new window with receipt
+  const handlePrintReceipt = (saleData: SaleData) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow popups to print the receipt');
+      return;
+    }
+
+    // Create the HTML content for the receipt
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${saleData.id}</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              margin: 20px;
+              color: #000;
+              background: #fff;
+            }
+            .receipt-container {
+              max-width: 300px;
+              margin: 0 auto;
+            }
+            .receipt-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 10px;
+            }
+            .receipt-header h1 {
+              margin: 0 0 10px 0;
+              font-size: 16px;
+              font-weight: bold;
+            }
+            .receipt-header p {
+              margin: 2px 0;
+              font-size: 10px;
+            }
+            .sale-info {
+              margin-bottom: 15px;
+            }
+            .sale-info div {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .items-section {
+              margin-bottom: 15px;
+            }
+            .items-section h3 {
+              margin: 0 0 10px 0;
+              font-size: 12px;
+              font-weight: bold;
+              border-bottom: 1px solid #000;
+              padding-bottom: 3px;
+            }
+            .item-row {
+              margin-bottom: 8px;
+            }
+            .item-name {
+              font-weight: bold;
+              margin-bottom: 2px;
+            }
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 10px;
+            }
+            .item-total {
+              display: flex;
+              justify-content: space-between;
+              font-weight: bold;
+            }
+            .totals-section {
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              margin-bottom: 15px;
+            }
+            .totals-section div {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .totals-section .total-line {
+              font-weight: bold;
+              font-size: 14px;
+              border-top: 1px solid #000;
+              padding-top: 5px;
+              margin-top: 5px;
+            }
+            .payment-section {
+              margin-bottom: 15px;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+            }
+            .payment-section div {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .receipt-footer {
+              text-align: center;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              font-size: 10px;
+            }
+            .receipt-footer p {
+              margin: 3px 0;
+            }
+            @media print {
+              body {
+                margin: 0;
+              }
+              .receipt-container {
+                max-width: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-container">
+            <div class="receipt-header">
+              <h1>Premium Liquor Store</h1>
+              <p>123 Main Street, Anytown, USA</p>
+              <p>Phone: (555) 123-4567</p>
+            </div>
+
+            <div class="sale-info">
+              <div>
+                <span><strong>Sale ID:</strong></span>
+                <span>${saleData.id}</span>
+              </div>
+              <div>
+                <span><strong>Date:</strong></span>
+                <span>${new Date(saleData.saleDate).toLocaleString()}</span>
+              </div>
+              <div>
+                <span><strong>Cashier:</strong></span>
+                <span>${saleData.cashierId}</span>
+              </div>
+            </div>
+
+            <div class="items-section">
+              <h3>Items Purchased</h3>
+                             ${saleData.items.map((item: SaleData['items'][0]) => `
+                <div class="item-row">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-details">
+                    <span>${item.quantity} × ${formatCurrency(item.priceAtSale)}</span>
+                  </div>
+                  <div class="item-total">
+                    <span></span>
+                    <span>${formatCurrency(item.finalLineTotal)}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="totals-section">
+              <div>
+                <span>Subtotal:</span>
+                <span>${formatCurrency(saleData.items.reduce((sum, item) => sum + item.finalLineTotal, 0))}</span>
+              </div>
+              <div>
+                <span>Tax:</span>
+                <span>${formatCurrency(saleData.taxAmount)}</span>
+              </div>
+              ${saleData.discountAmount > 0 ? `
+                <div style="color: #008000;">
+                  <span>Discount:</span>
+                  <span>-${formatCurrency(saleData.discountAmount)}</span>
+                </div>
+              ` : ''}
+              <div class="total-line">
+                <span>Total:</span>
+                <span>${formatCurrency(saleData.totalAmount)}</span>
+              </div>
+            </div>
+
+            <div class="payment-section">
+              <div>
+                <span><strong>Payment Method:</strong></span>
+                <span style="text-transform: capitalize;">${saleData.paymentMethod}</span>
+              </div>
+              ${saleData.paymentMethod === 'cash' && saleData.changeGiven > 0 ? `
+                <div>
+                  <span><strong>Change Given:</strong></span>
+                  <span>${formatCurrency(saleData.changeGiven)}</span>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="receipt-footer">
+              <p>Thank you for your business!</p>
+              <p>Please drink responsibly.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
+
+    // Wait a moment for content to load, then print
+    setTimeout(() => {
+      printWindow.print();
+      // Optionally close the window after printing
+      setTimeout(() => {
+        printWindow.close();
+      }, 100);
+    }, 500);
+  };
+
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -518,7 +829,7 @@ export default function Sales() {
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
-                        completeSale()
+                        handleCompleteSale()
                       }}
                     >
                       Complete Transaction
@@ -1076,6 +1387,29 @@ export default function Sales() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Payment Confirmed Modal */}
+      {showPaymentConfirmedModal && confirmedSaleData && (
+        <PaymentConfirmedModal
+          saleData={confirmedSaleData}
+          onClose={() => {
+            setShowPaymentConfirmedModal(false);
+            setConfirmedSaleData(null);
+            // Clear cart and reset all state for a new sale
+            clearCart();
+            setCustomerPayment(0);
+            setCustomerPaymentInput('');
+            setAppliedCashPayment(0);
+            setDiscountModalOpen(false);
+            setDiscountModalStep('initial');
+            setDiscountAmount('');
+            setDiscountType('flat');
+            setDiscountReason('');
+            setSelectedItemForDiscount(null);
+          }}
+          onPrint={handlePrintReceipt}
+        />
       )}
     </div>
   )
