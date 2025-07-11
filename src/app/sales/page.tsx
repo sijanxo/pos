@@ -154,7 +154,7 @@ export default function Sales() {
   
   const cartDiscountAmount = cartDiscount 
     ? cartDiscount.type === 'flat' 
-      ? cartDiscount.amount 
+      ? Math.min(cartDiscount.amount, subtotalAmount) 
       : subtotalAmount * (cartDiscount.amount / 100)
     : 0
     
@@ -356,7 +356,9 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off`}
+                            {item.discount.type === 'flat' 
+                              ? `${formatCurrency(toCents(Math.min(item.discount.amount, item.price * item.quantity)))} off total` 
+                              : `${item.discount.amount}% off`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -423,9 +425,16 @@ export default function Sales() {
               <div className="text-gray-300 text-sm">Subtotal: {formatCurrency(toCents(subtotalAmount))}</div>
                                              {cartDiscount && (
                   <div className="text-green-400 text-sm flex items-center justify-end gap-2">
-                    <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
-                      {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
+                        {cartDiscount.type === 'flat' 
+                          ? `${formatCurrency(toCents(Math.min(cartDiscount.amount, subtotalAmount)))} off total` 
+                          : `${cartDiscount.amount}% off`}
+                      </span>
+                      <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
+                        {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
+                      </span>
+                    </div>
                     <button
                       className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                       onClick={() => setCartDiscount(null)}
