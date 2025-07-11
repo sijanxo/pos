@@ -3,11 +3,20 @@
 import { useEffect, useState } from 'react'
 
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
-import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId } from '@/utils'
+
+// Constants for configuration
+const STORE_CONFIG = {
+  name: 'Premium Liquor Store',
+  address: '123 Main Street, Anytown, USA',
+  phone: '(555) 123-4567',
+  defaultCashierId: 'CASHIER-001',
+  defaultTaxRate: 8.5, // 8.5%
+  defaultMarkupPercentage: 40, // 40% markup (60% cost ratio)
+} as const
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId, calculateTax } from '@/utils'
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
 import { useSalesStore, SaleData } from '@/stores/salesStore'
 import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
-import { ReceiptDisplay } from '@/components/ReceiptDisplay'
 
 
 export default function Sales() {
@@ -43,6 +52,7 @@ export default function Sales() {
     setCustomerPayment,
     setCustomerPaymentInput,
     setAppliedCashPayment,
+    completeSale,
     cancelSale,
   } = useCartStore();
 
@@ -54,88 +64,12 @@ export default function Sales() {
   const [showPaymentConfirmedModal, setShowPaymentConfirmedModal] = useState<boolean>(false);
   const [confirmedSaleData, setConfirmedSaleData] = useState<SaleData | null>(null);
 
-  // Handle complete sale - create sale data and show confirmation modal
-  const handleCompleteSale = () => {
-    // Calculate the final amounts
-    const subtotalAmount = cartItems.reduce(
-      (sum: number, item: CartItem) => {
-        const itemTotal = item.price * item.quantity;
-        if (item.discount) {
-          if (item.discount.type === 'flat') {
-            return sum + Math.max(0, itemTotal - item.discount.amount);
-          } else {
-            return sum + itemTotal * (1 - item.discount.amount / 100);
-          }
-        }
-        return sum + itemTotal;
-      },
-      0,
-    );
-    
-    const cartDiscountAmount = cartDiscount 
-      ? cartDiscount.type === 'flat' 
-        ? cartDiscount.amount 
-        : subtotalAmount * (cartDiscount.amount / 100)
-      : 0;
-      
-    const finalTotal = Math.max(0, subtotalAmount - cartDiscountAmount);
-    const totalAmountInCents = toCents(finalTotal);
-    
-    // Determine payment method (simplified logic - assuming cash if there's applied cash payment)
-    const paymentMethod: 'cash' | 'card' = appliedCashPayment > 0 ? 'cash' : 'card';
-    
-    // Calculate change given (only for cash payments)
-    const changeGivenInCents = paymentMethod === 'cash' ? toCents(Math.max(0, appliedCashPayment - finalTotal)) : 0;
-    
-    // Create sale data
-    const saleData: SaleData = {
-      id: generateId(),
-      saleDate: new Date().toISOString(),
-      totalAmount: totalAmountInCents,
-      taxAmount: 0, // Simplified - no tax calculation for now
-      discountAmount: toCents(cartDiscountAmount),
-      paymentMethod,
-      cashierId: 'CASHIER-001', // Simplified - hardcoded cashier ID
-      isRefund: false,
-      originalSaleId: null,
-      changeGiven: changeGivenInCents,
-      items: cartItems.map(item => {
-        const baseTotal = item.price * item.quantity;
-        let finalLineTotal = baseTotal;
-        let appliedDiscount = 0;
-        
-        if (item.discount) {
-          if (item.discount.type === 'flat') {
-            appliedDiscount = Math.min(item.discount.amount, baseTotal);
-            finalLineTotal = Math.max(0, baseTotal - appliedDiscount);
-          } else {
-            appliedDiscount = baseTotal * (item.discount.amount / 100);
-            finalLineTotal = baseTotal - appliedDiscount;
-          }
-        }
-        
-        return {
-          productId: item.id.toString(),
-          name: item.name,
-          quantity: item.quantity,
-          priceAtSale: toCents(item.price),
-          costAtSale: toCents(item.price * 0.6), // Simplified - assuming 40% markup
-          appliedDiscount: toCents(appliedDiscount),
-          finalLineTotal: toCents(finalLineTotal),
-        };
-      }),
-    };
+  // Missing state variables that were being used but not declared
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
+  const [lastSaleData, setLastSaleData] = useState<SaleData | null>(null);
+  const [showReceipt, setShowReceipt] = useState<boolean>(false);
 
-    // Save the sale
-    addSale(saleData);
 
-    // Show confirmation modal
-    setConfirmedSaleData(saleData);
-    setShowPaymentConfirmedModal(true);
-
-    // Close the checkout modal
-    setCheckoutModalOpen(false);
-  };
 
   // Handle print receipt - open new window with receipt
   const handlePrintReceipt = (saleData: SaleData) => {
@@ -263,9 +197,9 @@ export default function Sales() {
         <body>
           <div class="receipt-container">
             <div class="receipt-header">
-              <h1>Premium Liquor Store</h1>
-              <p>123 Main Street, Anytown, USA</p>
-              <p>Phone: (555) 123-4567</p>
+              <h1>${STORE_CONFIG.name}</h1>
+              <p>${STORE_CONFIG.address}</p>
+              <p>Phone: ${STORE_CONFIG.phone}</p>
             </div>
 
             <div class="sale-info">
@@ -356,7 +290,12 @@ export default function Sales() {
   };
 
 
-  const [searchResults, setSearchResults] = useState<Product[]>([
+  // TODO: Replace with actual product search/fetch functionality
+  // This is mock data for development purposes
+  const [searchResults, setSearchResults] = useState<Product[]>([])
+  
+  // Mock products for demonstration - should be replaced with real product fetching
+  const mockProducts: Product[] = [
     {
       id: '1',
       sku: 'WN-001',
@@ -417,7 +356,23 @@ export default function Sales() {
       createdAt: new Date(),
       updatedAt: new Date(),
     },
-  ])
+  ]
+
+  // Effect to filter products based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    const filtered = mockProducts.filter(product =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
+  }, [searchQuery])
   const [activeItem, setActiveItem] = useState(0)
   const [editingQuantity, setEditingQuantity] = useState<Record<string, string>>({})
 
@@ -513,7 +468,7 @@ export default function Sales() {
       
       // Calculate values in cents for accurate storage
       const subtotalInCents = toCents(subtotalAmount);
-      const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
+      const taxInCents = calculateTax(subtotalInCents, STORE_CONFIG.defaultTaxRate);
       const discountInCents = toCents(cartDiscountAmount);
       const totalInCents = toCents(totalAmount);
       const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
@@ -529,7 +484,7 @@ export default function Sales() {
         taxAmount: taxInCents, // in cents
         discountAmount: discountInCents, // in cents
         paymentMethod,
-        cashierId: 'mock_cashier_123',
+        cashierId: STORE_CONFIG.defaultCashierId,
         isRefund: false,
         originalSaleId: null,
         changeGiven: paymentMethod === 'cash' ? changeGivenInCents : 0, // in cents
@@ -548,7 +503,7 @@ export default function Sales() {
             name: item.name,
             quantity: item.quantity,
             priceAtSale: toCents(item.price), // in cents
-            costAtSale: toCents(item.cost || item.price * 0.7), // mock cost if not available, in cents
+            costAtSale: toCents(item.cost || item.price * (100 - STORE_CONFIG.defaultMarkupPercentage) / 100), // mock cost if not available, in cents
             appliedDiscount: toCents(itemDiscountAmount), // in cents
             finalLineTotal: toCents(finalLineTotal), // in cents
           };
@@ -1338,25 +1293,7 @@ export default function Sales() {
                   />
                                     </div>
 
-                    {/* Validation message for flat discounts */}
-                    {selectedItemForDiscount && discountType === 'flat' && discountAmount && parseFloat(discountAmount) > 0 && (
-                      (() => {
-                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
-                        if (selectedItem) {
-                          const lineTotal = selectedItem.price * selectedItem.quantity
-                          if (parseFloat(discountAmount) > lineTotal) {
-                            return (
-                              <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
-                                <strong>Warning:</strong> Discount amount ({formatCurrency(toCents(parseFloat(discountAmount)))}) cannot exceed line total ({formatCurrency(toCents(lineTotal))})
-                              </div>
-                            )
-                          }
-                        }
-                        return null
-                      })()
-                    )}
-
-                    <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
                     onClick={() => setDiscountModalOpen(false)}
@@ -1529,6 +1466,24 @@ export default function Sales() {
                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
                       />
                     </div>
+
+                    {/* Validation message for flat discounts on specific items */}
+                    {selectedItemForDiscount && discountType === 'flat' && discountAmount && parseFloat(discountAmount) > 0 && (
+                      (() => {
+                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
+                        if (selectedItem) {
+                          const lineTotal = selectedItem.price * selectedItem.quantity
+                          if (parseFloat(discountAmount) > lineTotal) {
+                            return (
+                              <div className="p-2 bg-red-900 border border-red-600 rounded text-red-300 text-sm">
+                                <strong>Warning:</strong> Discount amount ({formatCurrency(toCents(parseFloat(discountAmount)))}) cannot exceed line total ({formatCurrency(toCents(lineTotal))})
+                              </div>
+                            )
+                          }
+                        }
+                        return null
+                      })()
+                    )}
                   </>
                 )}
 
