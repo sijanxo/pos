@@ -305,7 +305,7 @@ export default function Sales() {
                       </button>
                       <input
                         type="text"
-                        defaultValue={item.quantity}
+                        value={item.quantity}
                         style={{
                           width: '70px',
                           height: '30px',
