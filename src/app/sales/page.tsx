@@ -115,7 +115,7 @@ export default function Sales() {
   
   const cartDiscountAmount = cartDiscount 
     ? cartDiscount.type === 'flat' 
-      ? cartDiscount.amount 
+      ? Math.min(cartDiscount.amount, subtotalAmount) 
       : subtotalAmount * (cartDiscount.amount / 100)
     : 0
     
