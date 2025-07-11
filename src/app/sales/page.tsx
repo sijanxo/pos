@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
-import { useCartStore, Product, CartItem } from '@/stores/cartStore'
+
+import { useCartStore, CartItem } from '@/stores/cartStore'
+import { Product } from '@/types'
+
 
 export default function Sales() {
   // Using cart store for persistent state
@@ -43,28 +46,64 @@ export default function Sales() {
   } = useCartStore();
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
-      id: 1,
+      id: '1',
       sku: 'WN-001',
       name: 'Cabernet Sauvignon',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 24.99,
+      cost: 18.00,
+      stockQuantity: 25,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 2,
+      id: '2',
       sku: 'WN-002',
       name: 'Chardonnay',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 19.99,
+      cost: 15.00,
+      stockQuantity: 30,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 3,
+      id: '3',
       sku: 'WN-003',
       name: 'Merlot',
+      category: 'Wine',
+      brand: 'Premium Brand',
+      volumeMl: 750,
       price: 22.99,
+      cost: 17.00,
+      stockQuantity: 20,
+      minStockLevel: 5,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
     {
-      id: 4,
+      id: '4',
       sku: 'BR-001',
       name: 'Craft IPA',
+      category: 'Beer',
+      brand: 'Local Brewery',
+      volumeMl: 500,
       price: 12.99,
+      cost: 8.00,
+      stockQuantity: 40,
+      minStockLevel: 10,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   ])
   const [activeItem, setActiveItem] = useState(0)
@@ -283,8 +322,9 @@ export default function Sales() {
                           // On blur, validate and finalize the input
                           const currentEditValue = editingQuantity[item.id];
                           if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
-                            // If invalid, revert to current quantity and update the quantity if needed
-                            updateQuantity(item.id, item.quantity);
+
+                            // If invalid, just clear editing state - no need to update store with existing value
+
                           } else {
                             // Ensure the quantity is updated with the final valid value
                             const finalValue = parseInt(currentEditValue, 10);
