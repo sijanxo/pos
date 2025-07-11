@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 
-import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
-import { toCents, fromCents, formatCurrency, calculateDiscountAmount, generateId } from '@/utils'
+import { Search, Plus, Minus, Trash2Icon, Check, Receipt } from 'lucide-react' // Merged icons
+import { toCents, fromCents, formatCurrency, calculateDiscountAmount, calculateTax, generateId } from '@/utils' // Merged utils, including calculateTax
 import { useCartStore, Product, CartItem } from '@/stores/cartStore'
-import { useSalesStore, SaleData } from '@/stores/salesStore'
-import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal'
-import { ReceiptDisplay } from '@/components/ReceiptDisplay'
+
+import { useSalesStore, SaleData } from '@/stores/salesStore' // Using useSalesStore
+import { PaymentConfirmedModal } from '@/components/PaymentConfirmedModal' // New modal component
+import { ReceiptDisplay } from '@/components/ReceiptDisplay' // Keep for direct rendering if needed elsewhere, but print logic will generate HTML
 
 
 export default function Sales() {
@@ -47,314 +48,15 @@ export default function Sales() {
   } = useCartStore();
 
 
-  // Sales store for saving completed sales
-  const { addSale } = useSalesStore();
+  // Sales store hook
+  const { addSale } = useSalesStore(); // Use this consistently
 
   // State for PaymentConfirmedModal
   const [showPaymentConfirmedModal, setShowPaymentConfirmedModal] = useState<boolean>(false);
   const [confirmedSaleData, setConfirmedSaleData] = useState<SaleData | null>(null);
 
-  // Handle complete sale - create sale data and show confirmation modal
-  const handleCompleteSale = () => {
-    // Calculate the final amounts
-    const subtotalAmount = cartItems.reduce(
-      (sum: number, item: CartItem) => {
-        const itemTotal = item.price * item.quantity;
-        if (item.discount) {
-          if (item.discount.type === 'flat') {
-            return sum + Math.max(0, itemTotal - item.discount.amount);
-          } else {
-            return sum + itemTotal * (1 - item.discount.amount / 100);
-          }
-        }
-        return sum + itemTotal;
-      },
-      0,
-    );
-    
-    const cartDiscountAmount = cartDiscount 
-      ? cartDiscount.type === 'flat' 
-        ? cartDiscount.amount 
-        : subtotalAmount * (cartDiscount.amount / 100)
-      : 0;
-      
-    const finalTotal = Math.max(0, subtotalAmount - cartDiscountAmount);
-    const totalAmountInCents = toCents(finalTotal);
-    
-    // Determine payment method (simplified logic - assuming cash if there's applied cash payment)
-    const paymentMethod: 'cash' | 'card' = appliedCashPayment > 0 ? 'cash' : 'card';
-    
-    // Calculate change given (only for cash payments)
-    const changeGivenInCents = paymentMethod === 'cash' ? toCents(Math.max(0, appliedCashPayment - finalTotal)) : 0;
-    
-    // Create sale data
-    const saleData: SaleData = {
-      id: generateId(),
-      saleDate: new Date().toISOString(),
-      totalAmount: totalAmountInCents,
-      taxAmount: 0, // Simplified - no tax calculation for now
-      discountAmount: toCents(cartDiscountAmount),
-      paymentMethod,
-      cashierId: 'CASHIER-001', // Simplified - hardcoded cashier ID
-      isRefund: false,
-      originalSaleId: null,
-      changeGiven: changeGivenInCents,
-      items: cartItems.map(item => {
-        const baseTotal = item.price * item.quantity;
-        let finalLineTotal = baseTotal;
-        let appliedDiscount = 0;
-        
-        if (item.discount) {
-          if (item.discount.type === 'flat') {
-            appliedDiscount = Math.min(item.discount.amount, baseTotal);
-            finalLineTotal = Math.max(0, baseTotal - appliedDiscount);
-          } else {
-            appliedDiscount = baseTotal * (item.discount.amount / 100);
-            finalLineTotal = baseTotal - appliedDiscount;
-          }
-        }
-        
-        return {
-          productId: item.id.toString(),
-          name: item.name,
-          quantity: item.quantity,
-          priceAtSale: toCents(item.price),
-          costAtSale: toCents(item.price * 0.6), // Simplified - assuming 40% markup
-          appliedDiscount: toCents(appliedDiscount),
-          finalLineTotal: toCents(finalLineTotal),
-        };
-      }),
-    };
-
-    // Save the sale
-    addSale(saleData);
-
-    // Show confirmation modal
-    setConfirmedSaleData(saleData);
-    setShowPaymentConfirmedModal(true);
-
-    // Close the checkout modal
-    setCheckoutModalOpen(false);
-  };
-
-  // Handle print receipt - open new window with receipt
-  const handlePrintReceipt = (saleData: SaleData) => {
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (!printWindow) {
-      alert('Please allow popups to print the receipt');
-      return;
-    }
-
-    // Create the HTML content for the receipt
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt - ${saleData.id}</title>
-          <style>
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              line-height: 1.4;
-              margin: 20px;
-              color: #000;
-              background: #fff;
-            }
-            .receipt-container {
-              max-width: 300px;
-              margin: 0 auto;
-            }
-            .receipt-header {
-              text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 1px solid #000;
-              padding-bottom: 10px;
-            }
-            .receipt-header h1 {
-              margin: 0 0 10px 0;
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .receipt-header p {
-              margin: 2px 0;
-              font-size: 10px;
-            }
-            .sale-info {
-              margin-bottom: 15px;
-            }
-            .sale-info div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .items-section {
-              margin-bottom: 15px;
-            }
-            .items-section h3 {
-              margin: 0 0 10px 0;
-              font-size: 12px;
-              font-weight: bold;
-              border-bottom: 1px solid #000;
-              padding-bottom: 3px;
-            }
-            .item-row {
-              margin-bottom: 8px;
-            }
-            .item-name {
-              font-weight: bold;
-              margin-bottom: 2px;
-            }
-            .item-details {
-              display: flex;
-              justify-content: space-between;
-              font-size: 10px;
-            }
-            .item-total {
-              display: flex;
-              justify-content: space-between;
-              font-weight: bold;
-            }
-            .totals-section {
-              border-top: 1px solid #000;
-              padding-top: 10px;
-              margin-bottom: 15px;
-            }
-            .totals-section div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .totals-section .total-line {
-              font-weight: bold;
-              font-size: 14px;
-              border-top: 1px solid #000;
-              padding-top: 5px;
-              margin-top: 5px;
-            }
-            .payment-section {
-              margin-bottom: 15px;
-              border-top: 1px solid #000;
-              padding-top: 10px;
-            }
-            .payment-section div {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-            }
-            .receipt-footer {
-              text-align: center;
-              border-top: 1px solid #000;
-              padding-top: 10px;
-              font-size: 10px;
-            }
-            .receipt-footer p {
-              margin: 3px 0;
-            }
-            @media print {
-              body {
-                margin: 0;
-              }
-              .receipt-container {
-                max-width: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-container">
-            <div class="receipt-header">
-              <h1>Premium Liquor Store</h1>
-              <p>123 Main Street, Anytown, USA</p>
-              <p>Phone: (555) 123-4567</p>
-            </div>
-
-            <div class="sale-info">
-              <div>
-                <span><strong>Sale ID:</strong></span>
-                <span>${saleData.id}</span>
-              </div>
-              <div>
-                <span><strong>Date:</strong></span>
-                <span>${new Date(saleData.saleDate).toLocaleString()}</span>
-              </div>
-              <div>
-                <span><strong>Cashier:</strong></span>
-                <span>${saleData.cashierId}</span>
-              </div>
-            </div>
-
-            <div class="items-section">
-              <h3>Items Purchased</h3>
-                             ${saleData.items.map((item: SaleData['items'][0]) => `
-                <div class="item-row">
-                  <div class="item-name">${item.name}</div>
-                  <div class="item-details">
-                    <span>${item.quantity} × ${formatCurrency(item.priceAtSale)}</span>
-                  </div>
-                  <div class="item-total">
-                    <span></span>
-                    <span>${formatCurrency(item.finalLineTotal)}</span>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-
-            <div class="totals-section">
-              <div>
-                <span>Subtotal:</span>
-                <span>${formatCurrency(saleData.items.reduce((sum, item) => sum + item.finalLineTotal, 0))}</span>
-              </div>
-              <div>
-                <span>Tax:</span>
-                <span>${formatCurrency(saleData.taxAmount)}</span>
-              </div>
-              ${saleData.discountAmount > 0 ? `
-                <div style="color: #008000;">
-                  <span>Discount:</span>
-                  <span>-${formatCurrency(saleData.discountAmount)}</span>
-                </div>
-              ` : ''}
-              <div class="total-line">
-                <span>Total:</span>
-                <span>${formatCurrency(saleData.totalAmount)}</span>
-              </div>
-            </div>
-
-            <div class="payment-section">
-              <div>
-                <span><strong>Payment Method:</strong></span>
-                <span style="text-transform: capitalize;">${saleData.paymentMethod}</span>
-              </div>
-              ${saleData.paymentMethod === 'cash' && saleData.changeGiven > 0 ? `
-                <div>
-                  <span><strong>Change Given:</strong></span>
-                  <span>${formatCurrency(saleData.changeGiven)}</span>
-                </div>
-              ` : ''}
-            </div>
-
-            <div class="receipt-footer">
-              <p>Thank you for your business!</p>
-              <p>Please drink responsibly.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
-
-    // Wait a moment for content to load, then print
-    setTimeout(() => {
-      printWindow.print();
-      // Optionally close the window after printing
-      setTimeout(() => {
-        printWindow.close();
-      }, 100);
-    }, 500);
-  };
-
+  // Add payment method selection state (from previous fix)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
 
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
@@ -463,115 +165,16 @@ export default function Sales() {
     },
     0,
   )
-  
-  const cartDiscountAmount = cartDiscount 
-    ? cartDiscount.type === 'flat' 
-      ? Math.min(cartDiscount.amount, subtotalAmount) 
+
+  const cartDiscountAmount = cartDiscount
+    ? cartDiscount.type === 'flat'
+      ? Math.min(cartDiscount.amount, subtotalAmount)
       : subtotalAmount * (cartDiscount.amount / 100)
     : 0
-    
+
   const totalAmount = Math.max(0, subtotalAmount - cartDiscountAmount)
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
-
-  // Transaction completion logic - explicit handling for each payment method
-  const canCompleteTransaction = (() => {
-    if (cartItems.length === 0) return false;
-    if (!selectedPaymentMethod) return false;
-    
-    // For cash payments, require sufficient payment to cover the total
-    if (selectedPaymentMethod === 'cash') {
-      return remainingBalance <= 0;
-    }
-    
-    // For card payments, no balance validation needed - external terminal handles payment
-    if (selectedPaymentMethod === 'card') {
-      return true;
-    }
-    
-    return false;
-  })();
-
-  // Enhanced complete sale function with sales recording
-  const handleCompleteSale = () => {
-    // Use the new completion logic
-    if (!canCompleteTransaction) {
-      console.warn("Transaction cannot be completed based on current payment state.");
-      return;
-    }
-
-    // Ensure we have a valid payment method
-    if (!selectedPaymentMethod) {
-      console.error("No payment method selected");
-      alert('Please select a payment method before completing the transaction.');
-      return;
-    }
-
-    try {
-      // Generate unique sale ID
-      const saleId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
-      
-      // Calculate values in cents for accurate storage
-      const subtotalInCents = toCents(subtotalAmount);
-      const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
-      const discountInCents = toCents(cartDiscountAmount);
-      const totalInCents = toCents(totalAmount);
-      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
-      
-      // Use the selected payment method explicitly to prevent misclassification
-      const paymentMethod = selectedPaymentMethod;
-      
-      // Construct comprehensive saleData object
-      const saleData: SaleData = {
-        id: saleId,
-        saleDate: new Date().toISOString(),
-        totalAmount: totalInCents, // in cents
-        taxAmount: taxInCents, // in cents
-        discountAmount: discountInCents, // in cents
-        paymentMethod,
-        cashierId: 'mock_cashier_123',
-        isRefund: false,
-        originalSaleId: null,
-        changeGiven: paymentMethod === 'cash' ? changeGivenInCents : 0, // in cents
-        items: cartItems.map((item: CartItem) => {
-          // Calculate item-level values
-          const itemSubtotal = item.price * item.quantity;
-          const itemDiscountAmount = item.discount 
-            ? (item.discount.type === 'flat' 
-                ? Math.min(item.discount.amount, itemSubtotal)
-                : itemSubtotal * (item.discount.amount / 100))
-            : 0;
-          const finalLineTotal = itemSubtotal - itemDiscountAmount;
-          
-          return {
-            productId: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            priceAtSale: toCents(item.price), // in cents
-            costAtSale: toCents(item.cost || item.price * 0.7), // mock cost if not available, in cents
-            appliedDiscount: toCents(itemDiscountAmount), // in cents
-            finalLineTotal: toCents(finalLineTotal), // in cents
-          };
-        }),
-      };
-
-      // Record the sale to sales history
-      addSale(saleData);
-
-      // Clear cart and reset payment state
-      completeSale();
-
-      // Reset payment method selection
-      setSelectedPaymentMethod(null);
-
-      // Show receipt
-      setLastSaleData(saleData);
-      setShowReceipt(true);
-    } catch (error) {
-      console.error('Failed to complete sale:', error);
-      alert('Failed to complete sale. Please try again.');
-    }
-  };
 
   const generateCashAmounts = (): number[] => {
     const amounts: number[] = []
@@ -625,6 +228,283 @@ export default function Sales() {
     }
     
     return sortedAmounts.slice(0, 9)
+  }
+
+  // Handle complete sale - saves sale data and clears cart
+  const handleCompleteSale = () => {
+    // Generate unique sale ID
+    const saleId = `SALE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    // Calculate totals
+    const subtotalAmount = cartItems.reduce(
+      (sum: number, item: CartItem) => {
+        const itemTotal = item.price * item.quantity
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            return sum + Math.max(0, itemTotal - item.discount.amount)
+          } else {
+            return sum + itemTotal * (1 - item.discount.amount / 100)
+          }
+        }
+        return sum + itemTotal
+      },
+      0,
+    )
+    
+    const cartDiscountAmount = cartDiscount 
+      ? cartDiscount.type === 'flat' 
+        ? cartDiscount.amount 
+        : subtotalAmount * (cartDiscount.amount / 100)
+      : 0
+    
+    const finalTotal = Math.max(0, subtotalAmount - cartDiscountAmount)
+    
+    // Create sale data object
+    const saleData: SaleData = {
+      id: saleId,
+      saleDate: new Date().toISOString(),
+      totalAmount: toCents(finalTotal),
+      taxAmount: 0, // No tax calculation implemented yet
+      discountAmount: toCents(cartDiscountAmount),
+      paymentMethod: 'cash', // Default to cash for now
+      cashierId: 'CASHIER-001', // Default cashier ID
+      isRefund: false,
+      originalSaleId: null,
+      changeGiven: toCents(Math.max(0, appliedCashPayment - finalTotal)),
+      items: cartItems.map(item => {
+        const itemTotal = item.price * item.quantity
+        let appliedDiscount = 0
+        let finalLineTotal = itemTotal
+        
+        if (item.discount) {
+          if (item.discount.type === 'flat') {
+            appliedDiscount = Math.min(item.discount.amount, itemTotal)
+            finalLineTotal = Math.max(0, itemTotal - appliedDiscount)
+          } else {
+            appliedDiscount = itemTotal * (item.discount.amount / 100)
+            finalLineTotal = itemTotal - appliedDiscount
+          }
+        }
+        
+        return {
+          productId: item.id.toString(),
+          name: item.name,
+          quantity: item.quantity,
+          priceAtSale: toCents(item.price),
+          costAtSale: toCents(item.price * 0.6), // Assume 40% markup for cost calculation
+          appliedDiscount: toCents(appliedDiscount),
+          finalLineTotal: toCents(finalLineTotal),
+        }
+      })
+    }
+    
+    // Save the sale
+    addSale(saleData)
+    
+    // Print receipt
+    handlePrintReceipt(saleData)
+    
+    // Clear the cart
+    completeSale()
+  }
+
+  // Handle print receipt - generates and prints receipt
+  const handlePrintReceipt = (saleData: SaleData) => {
+    const receiptWindow = window.open('', '_blank', 'width=400,height=600')
+    if (!receiptWindow) {
+      alert('Please allow popups to print receipt')
+      return
+    }
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${saleData.id}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              background: white;
+              color: black;
+              width: 80mm;
+              margin: 0 auto;
+              padding: 10px;
+            }
+            .receipt-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 10px;
+            }
+            .store-name {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .store-info {
+              font-size: 10px;
+              margin-bottom: 2px;
+            }
+            .sale-info {
+              margin-bottom: 15px;
+            }
+            .sale-info-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .items-header {
+              font-weight: bold;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 5px;
+            }
+            .item-row {
+              margin-bottom: 8px;
+            }
+            .item-name {
+              font-weight: bold;
+            }
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+            }
+            .totals-section {
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              margin-top: 15px;
+            }
+            .total-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+            }
+            .total-final {
+              font-weight: bold;
+              font-size: 14px;
+              border-top: 1px solid #000;
+              padding-top: 5px;
+              margin-top: 5px;
+            }
+            .payment-section {
+              margin-top: 15px;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+            }
+            .receipt-footer {
+              text-align: center;
+              margin-top: 20px;
+              border-top: 1px solid #000;
+              padding-top: 10px;
+              font-size: 10px;
+            }
+            @media print {
+              body {
+                width: auto;
+                margin: 0;
+                padding: 5px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-header">
+            <div class="store-name">Premium Liquor Store</div>
+            <div class="store-info">123 Main Street, Anytown, USA</div>
+            <div class="store-info">Phone: (555) 123-4567</div>
+          </div>
+
+          <div class="sale-info">
+            <div class="sale-info-line">
+              <span><strong>Sale ID:</strong></span>
+              <span>${saleData.id}</span>
+            </div>
+            <div class="sale-info-line">
+              <span><strong>Date:</strong></span>
+              <span>${new Date(saleData.saleDate).toLocaleString()}</span>
+            </div>
+            <div class="sale-info-line">
+              <span><strong>Cashier:</strong></span>
+              <span>${saleData.cashierId}</span>
+            </div>
+          </div>
+
+          <div class="items-header">Items Purchased</div>
+          <div class="items-section">
+            ${saleData.items.map((item: SaleData['items'][0]) => `
+              <div class="item-row">
+                <div class="item-name">${item.name}</div>
+                <div class="item-details">
+                  <span>${item.quantity} × ${formatCurrency(item.priceAtSale)}</span>
+                  <span>${formatCurrency(item.finalLineTotal)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="totals-section">
+            <div class="total-line">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(saleData.items.reduce((sum, item) => sum + item.finalLineTotal, 0))}</span>
+            </div>
+            ${saleData.discountAmount > 0 ? `
+              <div class="total-line" style="color: green;">
+                <span>Discount:</span>
+                <span>-${formatCurrency(saleData.discountAmount)}</span>
+              </div>
+            ` : ''}
+            <div class="total-line">
+              <span>Tax:</span>
+              <span>${formatCurrency(saleData.taxAmount)}</span>
+            </div>
+            <div class="total-line total-final">
+              <span>Total:</span>
+              <span>${formatCurrency(saleData.totalAmount)}</span>
+            </div>
+          </div>
+
+          <div class="payment-section">
+            <div class="total-line">
+              <span><strong>Payment Method:</strong></span>
+              <span style="text-transform: capitalize;">${saleData.paymentMethod}</span>
+            </div>
+            ${saleData.changeGiven > 0 ? `
+              <div class="total-line">
+                <span><strong>Change Given:</strong></span>
+                <span>${formatCurrency(saleData.changeGiven)}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="receipt-footer">
+            <div>Thank you for your business!</div>
+            <div>Please drink responsibly.</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                  window.close();
+                }, 1000);
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `
+
+    receiptWindow.document.write(receiptHTML)
+    receiptWindow.document.close()
   }
 
   return (
@@ -733,9 +613,8 @@ export default function Sales() {
                           // On blur, validate and finalize the input
                           const currentEditValue = editingQuantity[item.id];
                           if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
-
-                            // If invalid, just clear editing state - no need to update store with existing value
-
+                            // If invalid, revert to current quantity and update the quantity if needed
+                            updateQuantity(item.id, item.quantity);
                           } else {
                             // Ensure the quantity is updated with the final valid value
                             const finalValue = parseInt(currentEditValue, 10);
@@ -767,9 +646,7 @@ export default function Sales() {
                       {item.discount && (
                         <div className="flex items-center gap-1">
                           <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                            {item.discount.type === 'flat' 
-                              ? `${formatCurrency(toCents(Math.min(item.discount.amount, item.price * item.quantity)))} off total` 
-                              : `${item.discount.amount}% off`}
+                            {item.discount.type === 'flat' ? `$${item.discount.amount} off total` : `${item.discount.amount}% off`}
                           </span>
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
@@ -836,16 +713,9 @@ export default function Sales() {
               <div className="text-gray-300 text-sm">Subtotal: {formatCurrency(toCents(subtotalAmount))}</div>
                                              {cartDiscount && (
                   <div className="text-green-400 text-sm flex items-center justify-end gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">
-                        {cartDiscount.type === 'flat' 
-                          ? `${formatCurrency(toCents(Math.min(cartDiscount.amount, subtotalAmount)))} off total` 
-                          : `${cartDiscount.amount}% off`}
-                      </span>
-                      <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
-                        {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
-                      </span>
-                    </div>
+                    <span>Cart Discount: -{formatCurrency(toCents(cartDiscountAmount))}
+                      {cartDiscount.reason && <span className="text-gray-400"> ({cartDiscount.reason})</span>}
+                    </span>
                     <button
                       className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                       onClick={() => setCartDiscount(null)}
@@ -883,7 +753,6 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
-              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(true)
             }}
           >
@@ -925,7 +794,6 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
-              setSelectedPaymentMethod(null)
               setCheckoutModalOpen(false)
             }}
           ></div>
@@ -966,52 +834,17 @@ export default function Sales() {
                 )}
               </div>
 
-              {/* Payment Method Selection */}
-              <div className="mb-3 p-2 bg-gray-50 rounded">
-                <div className="text-black font-medium text-sm mb-2">Payment Method</div>
-                <div className="flex gap-2">
-                  <button
-                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
-                      selectedPaymentMethod === 'cash'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 hover:bg-gray-300 text-black'
-                    }`}
-                    onClick={() => setSelectedPaymentMethod('cash')}
-                  >
-                    Cash
-                  </button>
-                  <button
-                    className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors ${
-                      selectedPaymentMethod === 'card'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 hover:bg-gray-300 text-black'
-                    }`}
-                    onClick={() => setSelectedPaymentMethod('card')}
-                  >
-                    Card
-                  </button>
-                </div>
-              </div>
-
-              <div className={`mb-3 p-2 rounded ${canCompleteTransaction ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
+              <div className={`mb-3 p-2 rounded ${remainingBalance <= 0 ? 'bg-green-50 border border-green-300' : 'bg-blue-50 border border-blue-300'}`}>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${canCompleteTransaction ? 'text-green-700' : 'text-black'}`}>
-                    {selectedPaymentMethod === 'cash' 
-                      ? (remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance')
-                      : selectedPaymentMethod === 'card'
-                      ? 'Ready for Card Payment'
-                      : 'Select Payment Method'}
+                  <span className={`font-medium ${remainingBalance <= 0 ? 'text-green-700' : 'text-black'}`}>
+                    {remainingBalance <= 0 ? 'Order Paid In Full' : 'Remaining Balance'}
                   </span>
-                  <span className={`font-bold text-lg ${canCompleteTransaction ? 'text-green-700' : 'text-blue-700'}`}>
-                    {selectedPaymentMethod === 'cash' 
-                      ? (remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance)))
-                      : selectedPaymentMethod === 'card'
-                      ? formatCurrency(toCents(totalAmount))
-                      : formatCurrency(toCents(totalAmount))}
+                  <span className={`font-bold text-lg ${remainingBalance <= 0 ? 'text-green-700' : 'text-blue-700'}`}>
+                    {remainingBalance <= 0 ? formatCurrency(0) : formatCurrency(toCents(remainingBalance))}
                   </span>
                 </div>
                 <div className="h-12 mt-2">
-                  {canCompleteTransaction ? (
+                  {remainingBalance <= 0 ? (
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
@@ -1027,7 +860,7 @@ export default function Sales() {
               </div>
 
               <div className="mb-3 h-20">
-                {selectedPaymentMethod === 'cash' && remainingBalance > 0 ? (
+                {remainingBalance > 0 ? (
                   <div className="p-2 bg-gray-100 rounded h-full">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-black font-medium text-sm">Customer Payment</span>
@@ -1083,7 +916,7 @@ export default function Sales() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
-                      Enter, click elsewhere, or 'Apply Cash' to apply
+                      Enter, click elsewhere, or 'cash' to apply
                     </div>
                     <div className="h-5 mt-1">
                       {customerPayment > 0 ? (
@@ -1098,22 +931,13 @@ export default function Sales() {
                       )}
                     </div>
                   </div>
-                ) : selectedPaymentMethod === 'card' ? (
-                  <div className="p-2 bg-blue-50 border border-blue-200 rounded h-full">
-                    <div className="text-center text-black">
-                      <div className="font-medium text-sm mb-1">Card Payment Selected</div>
-                      <div className="text-xs text-gray-600">
-                        Process payment on external terminal, then click "Complete Transaction"
-                      </div>
-                    </div>
-                  </div>
                 ) : (
                   <div className="h-full"></div>
                 )}
               </div>
             </div>
 
-            {selectedPaymentMethod === 'cash' && remainingBalance > 0 && (
+            {remainingBalance > 0 && (
               <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
                 <div className="flex-1 min-h-0">
                   <div className="grid grid-cols-3 gap-1 h-full max-h-40">
@@ -1153,7 +977,13 @@ export default function Sales() {
                       }
                     }}
                   >
-                    Apply Cash
+                    cash
+                  </button>
+                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
+                    credit
+                  </button>
+                  <button className="py-1 bg-gray-200 hover:bg-gray-300 rounded text-black font-medium text-xs h-12">
+                    debit
                   </button>
                 </div>
               </div>
@@ -1178,7 +1008,6 @@ export default function Sales() {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
-                    setSelectedPaymentMethod(null)
                     setCheckoutModalOpen(false)
                   }}
                 >
@@ -1463,146 +1292,62 @@ export default function Sales() {
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Discount Amount
-                      </label>
-                      <input
-                        type="text"
-                        value={discountAmount}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
-                            setDiscountAmount(value)
-                          }
-                        }}
-                        placeholder="0.00"
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
+  // Transaction completion logic - explicit handling for each payment method (from previous fix)
+  const canCompleteTransaction = (() => {
+    if (cartItems.length === 0) return false;
+    if (!selectedPaymentMethod) return false;
 
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Discount Type
-                      </label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="discountType"
-                            value="flat"
-                            checked={discountType === 'flat'}
-                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
-                            className="mr-2 text-amber-500"
-                          />
-                          <div className="text-left">
-                            <span className="text-gray-300">$ (Flat Amount)</span>
-                            <div className="text-xs text-gray-500">Deducted from line total</div>
-                          </div>
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="radio"
-                            name="discountType"
-                            value="percentage"
-                            checked={discountType === 'percentage'}
-                            onChange={(e) => setDiscountType(e.target.value as 'flat' | 'percentage')}
-                            className="mr-2 text-amber-500"
-                          />
-                          <div className="text-left">
-                            <span className="text-gray-300">% (Percentage)</span>
-                            <div className="text-xs text-gray-500">Percent off line total</div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Reason/Note (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={discountReason}
-                        onChange={(e) => setDiscountReason(e.target.value)}
-                        placeholder="e.g., Employee discount, Promotion, etc."
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
-                    onClick={() => setDiscountModalOpen(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={(() => {
-                      if (!selectedItemForDiscount || !discountAmount || parseFloat(discountAmount) <= 0) return true
-                      
-                      // For flat discounts on specific items, prevent discount larger than line total
-                      if (discountType === 'flat') {
-                        const selectedItem = cartItems.find(item => item.id === selectedItemForDiscount)
-                        if (selectedItem) {
-                          const lineTotal = selectedItem.price * selectedItem.quantity
-                          return parseFloat(discountAmount) > lineTotal
-                        }
-                      }
-                      
-                      return false
-                    })()}
-                    onClick={() => {
-                      const amount = parseFloat(discountAmount)
-                      setItemDiscount(selectedItemForDiscount!, {
-                        amount,
-                        type: discountType,
-                        reason: discountReason || undefined
-                      })
-                      setDiscountModalOpen(false)
-                      setDiscountModalStep('initial')
-                      setDiscountAmount('')
-                      setDiscountType('flat')
-                      setDiscountReason('')
-                      setSelectedItemForDiscount(null)
-                    }}
-                  >
-                    Apply Discount
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    // For cash payments, require sufficient payment to cover the total
+    if (selectedPaymentMethod === 'cash') {
+      return remainingBalance <= 0;
+    }
 
 
-      {/* Payment Confirmed Modal */}
-      {showPaymentConfirmedModal && confirmedSaleData && (
-        <PaymentConfirmedModal
-          saleData={confirmedSaleData}
-          onClose={() => {
-            setShowPaymentConfirmedModal(false);
-            setConfirmedSaleData(null);
-            // Clear cart and reset all state for a new sale
-            clearCart();
-            setCustomerPayment(0);
-            setCustomerPaymentInput('');
-            setAppliedCashPayment(0);
-            setDiscountModalOpen(false);
-            setDiscountModalStep('initial');
-            setDiscountAmount('');
-            setDiscountType('flat');
-            setDiscountReason('');
-            setSelectedItemForDiscount(null);
-          }}
-          onPrint={handlePrintReceipt}
-        />
+    // For card payments, no balance validation needed - external terminal handles payment
+    if (selectedPaymentMethod === 'card') {
+      return true;
+    }
 
-      )}
-    </div>
-  )
-}
+    return false;
+  })();
+
+  // Handle print receipt - open new window with receipt (from merged branch)
+  const handlePrintReceipt = (saleData: SaleData) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow popups to print the receipt');
+      return;
+    }
+
+    // Create the HTML content for the receipt
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${saleData.id}</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              margin: 20px;
+              color: #000;
+              background: #fff;
+            }
+            .receipt-container {
+              max-width: 300px;
+              margin: 0 auto;
+            }
+            .receipt-header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 10px;
+            }
+            .receipt-header h1 {
+              margin: 0 0 10px 0;
+              font-size: 16px;
+              font-weight: bold;
+            }
+            .receipt-header p {
+              margin:
