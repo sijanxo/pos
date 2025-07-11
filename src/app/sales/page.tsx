@@ -70,8 +70,6 @@ export default function Sales() {
 
   // Missing state variables that were being used but not declared
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
-  const [lastSaleData, setLastSaleData] = useState<SaleData | null>(null);
-  const [showReceipt, setShowReceipt] = useState<boolean>(false);
 
 
 
@@ -307,9 +305,12 @@ export default function Sales() {
       // Reset payment method selection
       setSelectedPaymentMethod(null);
 
-      // Show receipt
-      setLastSaleData(saleData);
-      setShowReceipt(true);
+      // Show payment confirmation modal
+      setConfirmedSaleData(saleData);
+      setShowPaymentConfirmedModal(true);
+
+      // Close the checkout modal
+      setCheckoutModalOpen(false);
     } catch (error) {
       console.error('Failed to complete sale:', error);
       alert('Failed to complete sale. Please try again.');
