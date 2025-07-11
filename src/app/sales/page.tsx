@@ -3,44 +3,44 @@
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount } from '@/utils'
-
-interface Product {
-  id: number
-  sku: string
-  name: string
-  price: number
-}
-
-interface CartItem extends Product {
-  quantity: number
-  discount?: {
-    amount: number
-    type: 'flat' | 'percentage'
-    reason?: string
-  }
-}
-
-interface CartDiscount {
-  amount: number
-  type: 'flat' | 'percentage'
-  reason?: string
-}
+import { useCartStore, Product, CartItem } from '@/stores/cartStore'
 
 export default function Sales() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
-  const [customerPayment, setCustomerPayment] = useState(0)
-  const [customerPaymentInput, setCustomerPaymentInput] = useState('')
-  const [appliedCashPayment, setAppliedCashPayment] = useState(0)
-  
-  // Discount modal states
-  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false)
-  const [discountModalStep, setDiscountModalStep] = useState<'initial' | 'entireCart' | 'specificItem'>('initial')
-  const [selectedItemForDiscount, setSelectedItemForDiscount] = useState<number | null>(null)
-  const [discountAmount, setDiscountAmount] = useState('')
-  const [discountType, setDiscountType] = useState<'flat' | 'percentage'>('flat')
-  const [discountReason, setDiscountReason] = useState('')
-  const [cartDiscount, setCartDiscount] = useState<CartDiscount | null>(null)
+  // Using cart store for persistent state
+  const {
+    searchQuery,
+    cartItems,
+    cartDiscount,
+    isDiscountModalOpen,
+    discountModalStep,
+    selectedItemForDiscount,
+    discountAmount,
+    discountType,
+    discountReason,
+    isCheckoutModalOpen,
+    customerPayment,
+    customerPaymentInput,
+    appliedCashPayment,
+    setSearchQuery,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    setCartDiscount,
+    setItemDiscount,
+    setDiscountModalOpen,
+    setDiscountModalStep,
+    setSelectedItemForDiscount,
+    setDiscountAmount,
+    setDiscountType,
+    setDiscountReason,
+    setCheckoutModalOpen,
+    setCustomerPayment,
+    setCustomerPaymentInput,
+    setAppliedCashPayment,
+    completeSale,
+    cancelSale,
+  } = useCartStore();
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: 1,
@@ -68,22 +68,7 @@ export default function Sales() {
     },
   ])
   const [activeItem, setActiveItem] = useState(0)
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 5,
-      sku: 'SP-001',
-      name: 'Gin',
-      price: 34.99,
-      quantity: 1,
-    },
-    {
-      id: 6,
-      sku: 'SP-002',
-      name: 'Vodka',
-      price: 29.99,
-      quantity: 2,
-    },
-  ])
+  const [editingQuantity, setEditingQuantity] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,50 +96,7 @@ export default function Sales() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [searchQuery, activeItem, searchResults])
-
-  const addToCart = (item: Product) => {
-    const existingItem = cartItems.find((cartItem: CartItem) => cartItem.id === item.id)
-    if (existingItem) {
-      setCartItems(
-        cartItems.map((cartItem: CartItem) =>
-          cartItem.id === item.id
-            ? {
-                ...cartItem,
-                quantity: cartItem.quantity + 1,
-              }
-            : cartItem,
-        ),
-      )
-    } else {
-      setCartItems([
-        ...cartItems,
-        {
-          ...item,
-          quantity: 1,
-        },
-      ])
-    }
-    setSearchQuery('')
-  }
-
-  const removeFromCart = (id: number) => {
-    setCartItems(cartItems.filter((item: CartItem) => item.id !== id))
-  }
-
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity < 1) return
-    setCartItems(
-      cartItems.map((item: CartItem) =>
-        item.id === id
-          ? {
-              ...item,
-              quantity: newQuantity,
-            }
-          : item,
-      ),
-    )
-  }
+  }, [searchQuery, activeItem, searchResults, addToCart])
 
   const subtotalAmount = cartItems.reduce(
     (sum: number, item: CartItem) => {
@@ -305,7 +247,7 @@ export default function Sales() {
                       </button>
                       <input
                         type="text"
-                        defaultValue={item.quantity}
+                        value={editingQuantity[item.id] !== undefined ? editingQuantity[item.id] : item.quantity.toString()}
                         style={{
                           width: '70px',
                           height: '30px',
@@ -317,9 +259,47 @@ export default function Sales() {
                           padding: '2px'
                         }}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value, 10)
-                          if (!isNaN(value) && value >= 1) {
-                            updateQuantity(item.id, value)
+                          const inputValue = e.target.value;
+                          
+                          // Allow empty string or numeric input during typing
+                          if (inputValue === '' || /^\d+$/.test(inputValue)) {
+                            // Update the editing state to allow user to see their input
+                            setEditingQuantity(prev => ({ ...prev, [item.id]: inputValue }));
+                            
+                            // If it's a valid number, also update the actual quantity
+                            if (inputValue !== '') {
+                              const numValue = parseInt(inputValue, 10);
+                              if (!isNaN(numValue) && numValue >= 1) {
+                                updateQuantity(item.id, numValue);
+                              }
+                            }
+                          }
+                        }}
+                        onFocus={() => {
+                          // Set the editing state when focusing
+                          setEditingQuantity(prev => ({ ...prev, [item.id]: item.quantity.toString() }));
+                        }}
+                        onBlur={() => {
+                          // On blur, validate and finalize the input
+                          const currentEditValue = editingQuantity[item.id];
+                          if (currentEditValue === '' || isNaN(parseInt(currentEditValue, 10)) || parseInt(currentEditValue, 10) < 1) {
+                            // If invalid, revert to current quantity and update the quantity if needed
+                            updateQuantity(item.id, item.quantity);
+                          } else {
+                            // Ensure the quantity is updated with the final valid value
+                            const finalValue = parseInt(currentEditValue, 10);
+                            updateQuantity(item.id, finalValue);
+                          }
+                          // Clear editing state
+                          setEditingQuantity(prev => {
+                            const newState = { ...prev };
+                            delete newState[item.id];
+                            return newState;
+                          });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur(); // Trigger blur to finalize the input
                           }
                         }}
                       />
@@ -341,11 +321,7 @@ export default function Sales() {
                           <button
                             className="px-1 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
                             onClick={() => {
-                              setCartItems(cartItems.map(cartItem => 
-                                cartItem.id === item.id 
-                                  ? { ...cartItem, discount: undefined }
-                                  : cartItem
-                              ))
+                              setItemDiscount(item.id, undefined)
                             }}
                             title="Remove discount"
                           >
@@ -425,9 +401,9 @@ export default function Sales() {
             <span className="text-2xl font-bold">{formatCurrency(toCents(totalAmount))}</span>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-2">
           <button 
-            className="w-1/2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             disabled={cartItems.length === 0}
             onClick={() => {
               setDiscountModalStep('initial')
@@ -435,22 +411,46 @@ export default function Sales() {
               setDiscountType('flat')
               setDiscountReason('')
               setSelectedItemForDiscount(null)
-              setIsDiscountModalOpen(true)
+              setDiscountModalOpen(true)
             }}
           >
             Apply Discount
           </button>
           <button 
-            className="w-1/2 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="flex-1 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
             disabled={cartItems.length === 0}
             onClick={() => {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
-              setIsCheckoutModalOpen(true)
+              setCheckoutModalOpen(true)
             }}
           >
             Pay
+          </button>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button 
+            className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg text-sm transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+            disabled={cartItems.length === 0}
+            onClick={() => {
+              if (window.confirm('Are you sure you want to clear the cart? This will remove all items.')) {
+                clearCart()
+              }
+            }}
+          >
+            Clear Cart
+          </button>
+          <button 
+            className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
+            disabled={cartItems.length === 0}
+            onClick={() => {
+              if (window.confirm('Are you sure you want to cancel this sale? This will clear the cart and reset all payment information.')) {
+                cancelSale()
+              }
+            }}
+          >
+            Cancel Sale
           </button>
         </div>
       </div>
@@ -464,7 +464,7 @@ export default function Sales() {
               setCustomerPayment(0)
               setCustomerPaymentInput('')
               setAppliedCashPayment(0)
-              setIsCheckoutModalOpen(false)
+              setCheckoutModalOpen(false)
             }}
           ></div>
           
@@ -518,11 +518,7 @@ export default function Sales() {
                     <button
                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
                       onClick={() => {
-                        setCartItems([])
-                        setCustomerPayment(0)
-                        setCustomerPaymentInput('')
-                        setAppliedCashPayment(0)
-                        setIsCheckoutModalOpen(false)
+                        completeSale()
                       }}
                     >
                       Complete Transaction
@@ -682,7 +678,7 @@ export default function Sales() {
                     setCustomerPayment(0)
                     setCustomerPaymentInput('')
                     setAppliedCashPayment(0)
-                    setIsCheckoutModalOpen(false)
+                    setCheckoutModalOpen(false)
                   }}
                 >
                   confirm
@@ -701,11 +697,7 @@ export default function Sales() {
                   }}
                   onClick={() => {
                     // Cancel entire transaction - clear cart and close modal
-                    setCartItems([])
-                    setCustomerPayment(0)
-                    setCustomerPaymentInput('')
-                    setAppliedCashPayment(0)
-                    setIsCheckoutModalOpen(false)
+                    cancelSale()
                   }}
                 >
                   cancel
@@ -722,7 +714,7 @@ export default function Sales() {
           <div 
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => {
-              setIsDiscountModalOpen(false)
+              setDiscountModalOpen(false)
               setDiscountModalStep('initial')
               setDiscountAmount('')
               setDiscountType('flat')
@@ -760,7 +752,7 @@ export default function Sales() {
                 <div className="flex justify-end mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
-                    onClick={() => setIsDiscountModalOpen(false)}
+                    onClick={() => setDiscountModalOpen(false)}
                   >
                     Cancel
                   </button>
@@ -866,7 +858,7 @@ export default function Sales() {
                     <div className="flex justify-end gap-3 mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
-                    onClick={() => setIsDiscountModalOpen(false)}
+                    onClick={() => setDiscountModalOpen(false)}
                   >
                     Cancel
                   </button>
@@ -880,7 +872,7 @@ export default function Sales() {
                         type: discountType,
                         reason: discountReason || undefined
                       })
-                      setIsDiscountModalOpen(false)
+                      setDiscountModalOpen(false)
                       setDiscountModalStep('initial')
                       setDiscountAmount('')
                       setDiscountType('flat')
@@ -1042,7 +1034,7 @@ export default function Sales() {
                 <div className="flex justify-end gap-3 mt-6">
                   <button
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-gray-100 rounded-lg transition-colors"
-                    onClick={() => setIsDiscountModalOpen(false)}
+                    onClick={() => setDiscountModalOpen(false)}
                   >
                     Cancel
                   </button>
@@ -1064,19 +1056,12 @@ export default function Sales() {
                     })()}
                     onClick={() => {
                       const amount = parseFloat(discountAmount)
-                      setCartItems(cartItems.map(item => 
-                        item.id === selectedItemForDiscount
-                          ? {
-                              ...item,
-                              discount: {
-                                amount,
-                                type: discountType,
-                                reason: discountReason || undefined
-                              }
-                            }
-                          : item
-                      ))
-                      setIsDiscountModalOpen(false)
+                      setItemDiscount(selectedItemForDiscount!, {
+                        amount,
+                        type: discountType,
+                        reason: discountReason || undefined
+                      })
+                      setDiscountModalOpen(false)
                       setDiscountModalStep('initial')
                       setDiscountAmount('')
                       setDiscountType('flat')
