@@ -474,23 +474,13 @@ export default function Sales() {
   const totalQuantity = cartItems.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
   const remainingBalance = totalAmount - appliedCashPayment
 
-  // Transaction completion logic - explicit handling for each payment method
-  const canCompleteTransaction = (() => {
-    if (cartItems.length === 0) return false;
-    if (!selectedPaymentMethod) return false;
-    
-    // For cash payments, require sufficient payment to cover the total
-    if (selectedPaymentMethod === 'cash') {
-      return remainingBalance <= 0;
-    }
-    
-    // For card payments, no balance validation needed - external terminal handles payment
-    if (selectedPaymentMethod === 'card') {
-      return true;
-    }
-    
-    return false;
-  })();
+  // Transaction completion logic
+  const canCompleteTransaction = 
+    cartItems.length > 0 && selectedPaymentMethod !== null && (
+      (selectedPaymentMethod === 'cash' && remainingBalance <= 0) ||
+      (selectedPaymentMethod === 'card' && totalAmount > 0)
+    );
+
 
   // Enhanced complete sale function with sales recording
   const handleCompleteSale = () => {
@@ -500,10 +490,21 @@ export default function Sales() {
       return;
     }
 
-    // Ensure we have a valid payment method
+
+    // Additional payment validation
     if (!selectedPaymentMethod) {
-      console.error("No payment method selected");
-      alert('Please select a payment method before completing the transaction.');
+      alert("Please select a payment method before completing the sale.");
+      return;
+    }
+
+    if (selectedPaymentMethod === 'cash' && remainingBalance > 0) {
+      alert("Insufficient cash payment. Please apply more cash or change payment method.");
+      return;
+    }
+
+    if (selectedPaymentMethod === 'card' && totalAmount <= 0) {
+      alert("Invalid transaction total for card payment.");
+
       return;
     }
 
@@ -514,10 +515,17 @@ export default function Sales() {
       // Calculate values in cents for accurate storage
       const subtotalInCents = toCents(subtotalAmount);
       const taxInCents = calculateTax(subtotalInCents, 8.5); // Assuming 8.5% tax rate
-      const discountInCents = toCents(cartDiscountAmount);
+      // Ensure cart discount is properly capped to not exceed subtotal
+      const cappedCartDiscountAmount = cartDiscount 
+        ? cartDiscount.type === 'flat' 
+          ? Math.min(cartDiscount.amount, subtotalAmount)
+          : subtotalAmount * (cartDiscount.amount / 100)
+        : 0;
+      const discountInCents = toCents(cappedCartDiscountAmount);
       const totalInCents = toCents(totalAmount);
-      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(appliedCashPayment - totalAmount) : 0;
+      const changeGivenInCents = selectedPaymentMethod === 'cash' ? toCents(Math.max(0, appliedCashPayment - totalAmount)) : 0;
       
+
       // Use the selected payment method explicitly to prevent misclassification
       const paymentMethod = selectedPaymentMethod;
       
