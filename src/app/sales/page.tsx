@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+
 import { Search, Plus, Minus, Trash2Icon, Check, Receipt } from 'lucide-react'
 import { toCents, fromCents, formatCurrency, calculateDiscountAmount, calculateTax, generateId } from '@/utils'
 
@@ -8,6 +9,7 @@ import { useCartStore, CartItem } from '@/stores/cartStore'
 import { useAddSale, SaleData } from '@/stores/salesStore'
 import { ReceiptDisplay } from '@/components/ReceiptDisplay'
 import { Product } from '@/types'
+
 
 
 export default function Sales() {
@@ -43,9 +45,9 @@ export default function Sales() {
     setCustomerPayment,
     setCustomerPaymentInput,
     setAppliedCashPayment,
-    completeSale,
     cancelSale,
   } = useCartStore();
+
   
   // Add sales store hook
   const addSale = useAddSale();
@@ -56,6 +58,7 @@ export default function Sales() {
   
   // Add payment method selection state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
+
   const [searchResults, setSearchResults] = useState<Product[]>([
     {
       id: '1',
@@ -1266,6 +1269,7 @@ export default function Sales() {
         </div>
       )}
 
+
       {/* Receipt Display Modal */}
       {showReceipt && lastSaleData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -1332,6 +1336,7 @@ export default function Sales() {
             </div>
           </div>
         </div>
+
       )}
     </div>
   )
