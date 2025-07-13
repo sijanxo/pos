@@ -304,7 +304,7 @@ export default function Sales() {
 
     const filtered = mockProducts.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.barcode && product.barcode.toLowerCase().includes(searchQuery.toLowerCase())) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase())
