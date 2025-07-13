@@ -304,10 +304,10 @@ export default function Sales() {
 
     const filtered = mockProducts.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode.toLowerCase().includes(searchQuery.toLowerCase())
+      product.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
     setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
   }, [searchQuery])
