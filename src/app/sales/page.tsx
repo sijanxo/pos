@@ -303,6 +303,7 @@ export default function Sales() {
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
+      setShowSearchResults(false)
       return
     }
 
@@ -314,7 +315,25 @@ export default function Sales() {
       product.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
     setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
+    setShowSearchResults(true) // Show results when there are search results
   }, [searchQuery])
+
+  // Effect to handle clicking outside the search area
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside)
+    
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
   const [activeItem, setActiveItem] = useState(0)
 
   useEffect(() => {
