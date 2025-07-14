@@ -342,17 +342,24 @@ export default function Sales() {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
+          setShowSearchResults(true) // Show results when navigating
           setActiveItem((prev: number) => prev > 0 ? prev - 1 : searchResults.length - 1)
           break
         case 'ArrowDown':
           e.preventDefault()
+          setShowSearchResults(true) // Show results when navigating
           setActiveItem((prev: number) => prev < searchResults.length - 1 ? prev + 1 : 0)
           break
         case 'Enter':
           e.preventDefault()
-          if (searchResults[activeItem]) {
+          if (searchResults[activeItem] && showSearchResults) {
             addToCart(searchResults[activeItem])
+            setShowSearchResults(false) // Hide results after adding to cart
           }
+          break
+        case 'Escape':
+          e.preventDefault()
+          setShowSearchResults(false) // Hide results on escape
           break
         default:
           break
@@ -362,7 +369,7 @@ export default function Sales() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [searchQuery, activeItem, searchResults, addToCart])
+  }, [searchQuery, activeItem, searchResults, showSearchResults, addToCart])
 
   const subtotalAmount = cartItems.reduce(
     (sum: number, item: CartItem) => {
