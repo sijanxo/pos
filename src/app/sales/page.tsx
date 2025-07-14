@@ -524,7 +524,7 @@ export default function Sales() {
 
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
-      <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
+      <div className="flex-1 overflow-hidden flex flex-col p-4">
         <div className="relative mb-4">
           <input
             type="text"
@@ -549,11 +549,11 @@ export default function Sales() {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex flex-col flex-1 min-h-0">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
           {cartItems.length > 0 ? (
-            <div className="space-y-2">
-              <div className="p-3 bg-gray-700 rounded-lg flex justify-between items-center font-medium text-gray-300 text-sm">
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="p-3 bg-gray-700 rounded-lg flex justify-between items-center font-medium text-gray-300 text-sm mb-2">
                 <div className="flex items-center gap-4">
                   <span className="w-[104px] text-center">Quantity</span>
                   <span className="w-20">SKU</span>
@@ -565,15 +565,17 @@ export default function Sales() {
                   <span className="w-6"></span>
                 </div>
               </div>
-              {cartItems.map((item) => (
-                <CartItemRow
-                  key={item.id}
-                  item={item}
-                  onUpdateQuantity={updateQuantity}
-                  onRemoveFromCart={removeFromCart}
-                  onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
-                />
-              ))}
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pb-4">
+                {cartItems.map((item) => (
+                  <CartItemRow
+                    key={item.id}
+                    item={item}
+                    onUpdateQuantity={updateQuantity}
+                    onRemoveFromCart={removeFromCart}
+                    onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8">No items in cart</div>
@@ -581,7 +583,7 @@ export default function Sales() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 p-4 border-t border-gray-700 z-10">
+      <div className="flex-shrink-0 bg-gray-800 p-4 border-t border-gray-700 z-10">
         <div className="mb-3">
           <div className="flex justify-between items-center mb-2">
             <div className="text-gray-300">
