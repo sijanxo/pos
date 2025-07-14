@@ -534,15 +534,20 @@ export default function Sales() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+          
+          {/* Search Results Overlay */}
+          {searchQuery && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1">
+              <SearchResults
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                activeItem={activeItem}
+                onAddToCart={addToCart}
+                onSetActiveItem={setActiveItem}
+              />
+            </div>
+          )}
         </div>
-
-        <SearchResults
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          activeItem={activeItem}
-          onAddToCart={addToCart}
-          onSetActiveItem={setActiveItem}
-        />
 
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
