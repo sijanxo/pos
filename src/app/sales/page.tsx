@@ -688,30 +688,7 @@ export default function Sales() {
             Pay
           </button>
         </div>
-        <div className="flex gap-2 mt-2">
-          <button 
-            className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg text-sm transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
-            disabled={cartItems.length === 0}
-            onClick={() => {
-              if (window.confirm('Are you sure you want to clear the cart? This will remove all items.')) {
-                clearCart()
-              }
-            }}
-          >
-            Clear Cart
-          </button>
-          <button 
-            className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed"
-            disabled={cartItems.length === 0}
-            onClick={() => {
-              if (window.confirm('Are you sure you want to cancel this sale? This will clear the cart and reset all payment information.')) {
-                cancelSale()
-              }
-            }}
-          >
-            Cancel Sale
-          </button>
-        </div>
+
       </div>
 
       {isCheckoutModalOpen && (
