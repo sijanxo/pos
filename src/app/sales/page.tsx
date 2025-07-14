@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
@@ -80,6 +80,10 @@ export default function Sales() {
   // TODO: Replace with actual product search/fetch functionality
   // This is mock data for development purposes
   const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [showSearchResults, setShowSearchResults] = useState<boolean>(false)
+  
+  // Ref for search container to detect clicks outside
+  const searchContainerRef = useRef<HTMLDivElement>(null)
   
   // Mock products for demonstration - should be replaced with real product fetching
 //   const mockProducts: Product[] = [
@@ -299,6 +303,7 @@ export default function Sales() {
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
+      setShowSearchResults(false)
       return
     }
 
@@ -310,7 +315,25 @@ export default function Sales() {
       product.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
     setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
+    setShowSearchResults(true) // Show results when there are search results
   }, [searchQuery])
+
+  // Effect to handle clicking outside the search area
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside)
+    
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
   const [activeItem, setActiveItem] = useState(0)
 
   useEffect(() => {
@@ -319,17 +342,24 @@ export default function Sales() {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
+          setShowSearchResults(true) // Show results when navigating
           setActiveItem((prev: number) => prev > 0 ? prev - 1 : searchResults.length - 1)
           break
         case 'ArrowDown':
           e.preventDefault()
+          setShowSearchResults(true) // Show results when navigating
           setActiveItem((prev: number) => prev < searchResults.length - 1 ? prev + 1 : 0)
           break
         case 'Enter':
           e.preventDefault()
-          if (searchResults[activeItem]) {
+          if (searchResults[activeItem] && showSearchResults) {
             addToCart(searchResults[activeItem])
+            setShowSearchResults(false) // Hide results after adding to cart
           }
+          break
+        case 'Escape':
+          e.preventDefault()
+          setShowSearchResults(false) // Hide results on escape
           break
         default:
           break
@@ -339,7 +369,7 @@ export default function Sales() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [searchQuery, activeItem, searchResults, addToCart])
+  }, [searchQuery, activeItem, searchResults, showSearchResults, addToCart])
 
   const subtotalAmount = cartItems.reduce(
     (sum: number, item: CartItem) => {
@@ -525,24 +555,32 @@ export default function Sales() {
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
       <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
-        <div className="relative mb-4">
+        <div className="relative mb-4" ref={searchContainerRef}>
           <input
             type="text"
             placeholder="Search"
             className="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchQuery && searchResults.length > 0) {
+                setShowSearchResults(true)
+              }
+            }}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
           
           {/* Search Results Overlay */}
-          {searchQuery && (
+          {searchQuery && showSearchResults && searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1">
               <SearchResults
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 activeItem={activeItem}
-                onAddToCart={addToCart}
+                onAddToCart={(product) => {
+                  addToCart(product)
+                  setShowSearchResults(false) // Hide results after adding to cart
+                }}
                 onSetActiveItem={setActiveItem}
               />
             </div>
