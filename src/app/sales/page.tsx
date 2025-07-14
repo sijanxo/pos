@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
@@ -80,6 +80,10 @@ export default function Sales() {
   // TODO: Replace with actual product search/fetch functionality
   // This is mock data for development purposes
   const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [showSearchResults, setShowSearchResults] = useState<boolean>(false)
+  
+  // Ref for search container to detect clicks outside
+  const searchContainerRef = useRef<HTMLDivElement>(null)
   
   // Mock products for demonstration - should be replaced with real product fetching
 //   const mockProducts: Product[] = [
