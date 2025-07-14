@@ -19,7 +19,7 @@ export function SearchResults({
   if (!searchQuery) return null
 
   return (
-    <div className="mb-4">
+    <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl p-4 max-h-96 overflow-y-auto">
       <h2 className="text-lg font-medium mb-2 text-gray-300">Search Results</h2>
       <div className="space-y-2">
         {searchResults.map((result, index) => (

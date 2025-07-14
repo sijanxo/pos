@@ -565,19 +565,24 @@ export default function Sales() {
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
 
-          {showSearchResults && (
-            <SearchResults
-              searchQuery={searchQuery}
-              searchResults={searchResults}
-              activeItem={activeItem}
-              onAddToCart={(product) => {
+          
+          {/* Search Results Overlay */}
+          {searchQuery && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1">
+              <SearchResults
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                activeItem={activeItem}
+                onAddToCart={(product) => {
                 addToCart(product)
                 setShowSearchResults(false) // Hide results after adding to cart
               }}
-              onSetActiveItem={setActiveItem}
-            />
+                onSetActiveItem={setActiveItem}
+              />
+            </div>
           )}
         </div>
+
 
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
