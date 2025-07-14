@@ -603,7 +603,7 @@ export default function Sales() {
                   <span className="w-6"></span>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+                             <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-2 pb-4">
                   {cartItems.map((item) => (
                     <CartItemRow
