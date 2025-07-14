@@ -587,35 +587,37 @@ export default function Sales() {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
-          {cartItems.length > 0 ? (
-            <div className="space-y-2">
-              <div className="p-3 bg-gray-700 rounded-lg flex justify-between items-center font-medium text-gray-300 text-sm">
-                <div className="flex items-center gap-4">
-                  <span className="w-[104px] text-center">Quantity</span>
-                  <span className="w-20">SKU</span>
-                  <span className="flex-1">Name</span>
+          <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)] pr-2 scrollbar-thin">
+            {cartItems.length > 0 ? (
+              <div className="space-y-2">
+                <div className="p-3 bg-gray-700 rounded-lg flex justify-between items-center font-medium text-gray-300 text-sm">
+                  <div className="flex items-center gap-4">
+                    <span className="w-[104px] text-center">Quantity</span>
+                    <span className="w-20">SKU</span>
+                    <span className="flex-1">Name</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="w-24 text-right">Unit Price</span>
+                    <span className="w-24 text-right mr-6">Total Price</span>
+                    <span className="w-6"></span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="w-24 text-right">Unit Price</span>
-                  <span className="w-24 text-right mr-6">Total Price</span>
-                  <span className="w-6"></span>
-                </div>
+                {cartItems.map((item) => (
+                  <CartItemRow
+                    key={item.id}
+                    item={item}
+                    onUpdateQuantity={updateQuantity}
+                    onRemoveFromCart={removeFromCart}
+                    onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
+                  />
+                ))}
               </div>
-              {cartItems.map((item) => (
-                <CartItemRow
-                  key={item.id}
-                  item={item}
-                  onUpdateQuantity={updateQuantity}
-                  onRemoveFromCart={removeFromCart}
-                  onRemoveDiscount={(itemId) => setItemDiscount(itemId, undefined)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">No items in cart</div>
-          )}
+            ) : (
+              <div className="text-center text-gray-500 py-8">No items in cart</div>
+            )}
+          </div>
         </div>
       </div>
 
