@@ -555,24 +555,32 @@ export default function Sales() {
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
       <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
-        <div className="relative mb-4">
+        <div className="relative mb-4" ref={searchContainerRef}>
           <input
             type="text"
             placeholder="Search"
             className="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchQuery && searchResults.length > 0) {
+                setShowSearchResults(true)
+              }
+            }}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
           
           {/* Search Results Overlay */}
-          {searchQuery && (
+          {searchQuery && showSearchResults && searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1">
               <SearchResults
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 activeItem={activeItem}
-                onAddToCart={addToCart}
+                onAddToCart={(product) => {
+                  addToCart(product)
+                  setShowSearchResults(false) // Hide results after adding to cart
+                }}
                 onSetActiveItem={setActiveItem}
               />
             </div>
