@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 import { Search, Plus, Minus, Trash2Icon } from 'lucide-react'
 
@@ -71,6 +71,9 @@ export default function Sales() {
   // Missing state variables that were being used but not declared
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | null>(null);
 
+  // Add state for controlling search results visibility
+  const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
 
   // Handle print receipt - delegate to utility function
@@ -299,6 +302,7 @@ export default function Sales() {
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
+      setShowSearchResults(false)
       return
     }
 
@@ -310,12 +314,28 @@ export default function Sales() {
       product.category.toLowerCase().includes(searchQuery.toLowerCase())
     )
     setSearchResults(filtered.slice(0, 10)) // Limit to 10 results
+    setShowSearchResults(true) // Show results when user types
   }, [searchQuery])
+
+  // Add click outside handler to hide search results
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   const [activeItem, setActiveItem] = useState(0)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!searchQuery) return
+      if (!searchQuery || !showSearchResults) return
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
@@ -329,7 +349,12 @@ export default function Sales() {
           e.preventDefault()
           if (searchResults[activeItem]) {
             addToCart(searchResults[activeItem])
+            setShowSearchResults(false) // Hide results after adding to cart
           }
+          break
+        case 'Escape':
+          e.preventDefault()
+          setShowSearchResults(false)
           break
         default:
           break
@@ -339,7 +364,7 @@ export default function Sales() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [searchQuery, activeItem, searchResults, addToCart])
+  }, [searchQuery, activeItem, searchResults, addToCart, showSearchResults])
 
   const subtotalAmount = cartItems.reduce(
     (sum: number, item: CartItem) => {
@@ -525,24 +550,34 @@ export default function Sales() {
   return (
     <div className="flex flex-col w-full h-screen bg-gray-900 text-gray-100 relative">
       <div className="flex-1 overflow-hidden flex flex-col p-4 pb-[160px]">
-        <div className="relative mb-4">
+        <div ref={searchContainerRef} className="relative mb-4">
           <input
             type="text"
             placeholder="Search"
             className="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:border-amber-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchQuery && searchResults.length > 0) {
+                setShowSearchResults(true)
+              }
+            }}
           />
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-        </div>
 
-        <SearchResults
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          activeItem={activeItem}
-          onAddToCart={addToCart}
-          onSetActiveItem={setActiveItem}
-        />
+          {showSearchResults && (
+            <SearchResults
+              searchQuery={searchQuery}
+              searchResults={searchResults}
+              activeItem={activeItem}
+              onAddToCart={(product) => {
+                addToCart(product)
+                setShowSearchResults(false) // Hide results after adding to cart
+              }}
+              onSetActiveItem={setActiveItem}
+            />
+          )}
+        </div>
 
         <div className="flex-1 overflow-auto">
           <h2 className="text-lg font-medium mb-2 text-gray-300">Cart Items</h2>
